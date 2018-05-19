@@ -1,0 +1,67 @@
+#!/bin/bash
+#
+# naemon2influx-grafana-helper    Startup script for naemon2influx-grafana-helper
+#
+# chkconfig: - 90 10
+# description: A connector which copies performancedata from Nagios/Icinga to InfluxDB
+# processname: naemon2influx-grafana-helper
+
+### BEGIN INIT INFO
+# Provides: naemon2influx-grafana-helper
+# Required-Start: $network $local_fs $remote_fs grafana
+# Required-Stop: $network $local_fs $remote_fs
+# Should-Start: $syslog $named
+# Should-Stop: $syslog $named
+# Short-Description: start and stop naemon2influx-grafana-helper
+# Description: naemon2influx-grafana-helper provides a Grafana scriped dashboard.
+### END INIT INFO
+
+set -e
+
+NAME=naemon2influx-grafana-helper
+DESC="naemon2influx-grafana-helper provides a Grafana scriped dashboard"
+DAEMON=/usr/bin/naemon2influx-grafana-helper
+PIDFILE=/var/run/naemon/naemon2influx-grafana-helper.pid
+
+. /lib/lsb/init-functions
+if [ -f /etc/defaults/naemon2influx-grafana-helper ] ; then
+	. /etc/defaults/naemon2influx-grafana-helper
+fi
+
+case "$1" in
+  start)
+	log_daemon_msg "Starting $NAME" || true
+	if start-stop-daemon --start --quiet --oknodo -m --pidfile $PIDFILE -c naemon -b --exec $DAEMON -- ; then
+		log_end_msg 0 || true
+	else
+		log_end_msg 1 || true
+	fi
+	;;
+  stop)
+	log_daemon_msg "Stopping $NAME" || true
+	if start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILE -u naemon ; then
+		log_end_msg 0 || true
+	else
+		log_end_msg 1 || true
+	fi
+	;;
+  status)
+        status $prog
+        ;;
+  restart|force-reload)
+        stop
+        start
+        ;;
+  try-restart|condrestart)
+        if status $prog > /dev/null; then
+            stop
+            start
+        fi
+        ;;
+  reload)
+        exit 3
+        ;;
+  *)
+        echo $"Usage: $0 {start|stop|status|restart|try-restart|force-reload}"
+        exit 2
+esac

@@ -1,0 +1,42 @@
+    {
+      "title": "Row",
+      "collapse": false,
+      "editable": true,
+      "height": "250px",
+      "panels": [ {
+          "title": "%servicename% - %field%",
+          "id": 1,
+          "isNew": true,
+          "editable": true,
+          "tooltip": { "shared": true, "value_type": "individual" },
+          "type": "graph",
+          "x-axis": true,
+          "y-axis": true,
+          "y_formats": [ "short" ],
+          "grid": { "leftLogBase": 1, "leftMax": null, "leftMin": null },
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "targets": [ {
+              "dsType": "influxdb",
+              "resultFormat": "time_series",
+              "groupBy": [],
+              "measurement": "%measurement%",
+              "tags": [ { "key": "hostname", "operator": "=", "value": "%hostname%" } ],
+              "query": "SELECT \"mem_total%\", \"mem_available\", \"mem_buffers\", \"mem_cached\", \"mem_free\" FROM \"%measurement%\" WHERE \"hostname\" = '%hostname%'",
+              "select": [
+                [ { "type": "field", "params": [ "mem_total" ] } ],
+                [ { "type": "field", "params": [ "mem_available" ] } ],
+                [ { "type": "field", "params": [ "mem_buffers" ] } ],
+                [ { "type": "field", "params": [ "mem_cached" ] } ],
+                [ { "type": "field", "params": [ "mem_free" ] } ]
+              ]
+          } ]
+      } ]
+    }

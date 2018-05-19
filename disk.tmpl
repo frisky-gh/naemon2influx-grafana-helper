@@ -1,0 +1,221 @@
+    //// Disk
+    {
+      "title": "Row",
+      "collapse": false,
+      "editable": true,
+      "height": "250px",
+      "panels": [
+        {
+          "title": "%servicename% - %hostname%:%target%",
+          "id": 1,
+          "isNew": true,
+          "editable": true,
+          "span": 6,
+          "tooltip": { "shared": true, "value_type": "individual" },
+          "type": "graph",
+          "x-axis": true,
+          "y-axis": true,
+          "y_formats": [ "mbytes" ],
+          "grid": {
+            "leftLogBase": 1, "leftMax": null, "leftMin": 0
+          },
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "targets": [
+            {
+              "dsType": "influxdb",
+              "resultFormat": "time_series",
+              "refId": "A",
+              "measurement": "%measurement%",
+              "query": "SELECT \"disk_total\" AS \"total size\", \"disk_avail\" AS \"available size\" FROM \"%measurement%\" WHERE \"hostname\" = '%hostname%' and disk = '%target%'",
+	      "alias": "$col",
+              "groupBy": [],
+              "tags": [
+                { "key": "hostname", "operator": "=", "value": "%hostname%" },
+                { "key": "disk", "operator": "=", "value": "%target%" }
+              ],
+              "select": [
+                [
+		  { "type": "field", "params": [ "disk_total" ] },
+		  { "type": "alias", "params": [ "total size" ] }
+		],
+                [
+		  { "type": "field", "params": [ "disk_avail" ] },
+		  { "type": "alias", "params": [ "available size" ] }
+	        ]
+              ]
+            }
+          ]
+        },
+        {
+          "title": "%servicename% Available % - %hostname%:%target%",
+          "id": 2,
+          "isNew": true,
+          "editable": true,
+          "span": 6,
+          "tooltip": { "shared": true, "value_type": "individual" },
+          "type": "graph",
+          "x-axis": true,
+          "y-axis": true,
+          "y_formats": [ "percent" ],
+          "grid": {
+            "leftLogBase": 1, "leftMax": 100, "leftMin": 0
+          },
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "targets": [
+            {
+              "dsType": "influxdb",
+              "resultFormat": "time_series",
+              "refId": "A",
+              "measurement": "%measurement%",
+              "query": "SELECT \"disk_avail_pct\" AS \"available %\", \"disk_avail_pct.warn_lower\" AS \"warning\", \"disk_avail_pct.crit_lower\" AS \"critical\" FROM \"%measurement%\" WHERE \"hostname\" = '%hostname%' and disk = '%target%'",
+	      "alias": "$col",
+              "groupBy": [],
+              "tags": [
+                { "key": "hostname", "operator": "=", "value": "%hostname%" },
+                { "key": "disk", "operator": "=", "value": "%target%" }
+              ],
+              "select": [
+                [
+		  { "type": "field", "params": [ "disk_avail_pct" ] },
+		  { "type": "alias", "params": [ "available %" ] }
+		],
+                [
+		  { "type": "field", "params": [ "disk_avail_pct.warn_lower" ] },
+		  { "type": "alias", "params": [ "warning" ] }
+	        ],
+                [
+		  { "type": "field", "params": [ "disk_avail_pct.crit_lower" ] },
+		  { "type": "alias", "params": [ "critical" ] }
+	        ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Row",
+      "collapse": false,
+      "editable": true,
+      "height": "250px",
+      "panels": [
+        {
+          "title": "Disk i-node - %hostname%:%target%",
+          "id": 1,
+          "isNew": true,
+          "editable": true,
+          "span": 6,
+          "tooltip": { "shared": true, "value_type": "individual" },
+          "type": "graph",
+          "x-axis": true,
+          "y-axis": true,
+          "y_formats": [ "short" ],
+          "grid": {
+            "leftLogBase": 1, "leftMax": null, "leftMin": 0
+          },
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "targets": [
+            {
+              "dsType": "influxdb",
+              "resultFormat": "time_series",
+              "refId": "A",
+              "measurement": "%measurement%",
+              "query": "SELECT \"disk_itotal\" AS \"total size\", \"disk_iavail\" AS \"available size\" FROM \"%measurement%\" WHERE \"hostname\" = '%hostname%' and disk = '%target%'",
+	      "alias": "$col",
+              "groupBy": [],
+              "tags": [
+                { "key": "hostname", "operator": "=", "value": "%hostname%" },
+                { "key": "disk", "operator": "=", "value": "%target%" }
+              ],
+              "select": [
+                [
+		  { "type": "field", "params": [ "disk_itotal" ] },
+		  { "type": "alias", "params": [ "total size" ] }
+		],
+                [
+		  { "type": "field", "params": [ "disk_iavail" ] },
+		  { "type": "alias", "params": [ "available size" ] }
+	        ]
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Disk i-node Available % - %hostname%:%target%",
+          "id": 2,
+          "isNew": true,
+          "editable": true,
+          "span": 6,
+          "tooltip": { "shared": true, "value_type": "individual" },
+          "type": "graph",
+          "x-axis": true,
+          "y-axis": true,
+          "y_formats": [ "percent" ],
+          "grid": {
+            "leftLogBase": 1, "leftMax": 100, "leftMin": 0
+          },
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "targets": [
+            {
+              "dsType": "influxdb",
+              "resultFormat": "time_series",
+              "refId": "A",
+              "measurement": "%measurement%",
+              "query": "SELECT \"disk_iavail_pct\" AS \"available %\", \"disk_iavail_pct.warn_lower\" AS \"warning\", \"disk_iavail_pct.crit_lower\" AS \"critical\" FROM \"%measurement%\" WHERE \"hostname\" = '%hostname%' and disk = '%target%'",
+	      "alias": "$col",
+              "groupBy": [],
+              "tags": [
+                { "key": "hostname", "operator": "=", "value": "%hostname%" },
+                { "key": "disk", "operator": "=", "value": "%target%" }
+              ],
+              "select": [
+                [
+		  { "type": "field", "params": [ "disk_iavail_pct" ] },
+		  { "type": "alias", "params": [ "available %" ] }
+		],
+                [
+		  { "type": "field", "params": [ "disk_iavail_pct.warn_lower" ] },
+		  { "type": "alias", "params": [ "warning" ] }
+	        ],
+                [
+		  { "type": "field", "params": [ "disk_iavail_pct.crit_lower" ] },
+		  { "type": "alias", "params": [ "critical" ] }
+	        ]
+              ]
+            }
+          ]
+        }
+      ]
+    }

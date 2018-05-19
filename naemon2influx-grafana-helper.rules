@@ -1,0 +1,43 @@
+# series		field			template    graphID	params
+.*			\w+\.max		IGNORE
+.*			\w+\.min		IGNORE
+.*			\w+\.warn_upper		IGNORE
+.*			\w+\.warn_lower		IGNORE
+.*			\w+\.crit_upper		IGNORE
+.*			\w+\.crit_lower		IGNORE
+.*OS_Performance,.*	(\w+)			generic	   generic:$1   target=$1
+.*OS_Performance,.*	(\w+_pct)		gpercent   gpercent:$1  target=$1
+.*OS_Performance,.*	(\w+)_(total|used|free|avail) gvolume gvolume:$1 target=$1
+.*OS_Performance,.*	cpu_\w+ 		cpu	   cpu
+.*OS_Performance,.*	mem_\w+ 		mem	   mem
+.*Disk,.*disk=([^,]+),.* \w+			disk	   disk:$1      target=$1
+
+
+####
+
+#aaa_total
+#aaa_free
+#bbbbb_total
+#bbbbb_free
+#cc_total
+#cc_free
+#cc_extra
+
+#  -> Graph; aaa ( free / total )
+#  -> Graph; bbbbb ( free / total )
+#  -> Graph; cc ( free / total )
+#  -> Graph; cc_extra
+
+####
+
+#tag: disk=/
+#	total
+#	free
+#tag: disk=/tmp
+#	total
+#	free
+
+#  -> Graph: disk "/" ( free / total )
+#  -> Graph: disk "/tmp" ( free / total )
+
+

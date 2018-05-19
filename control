@@ -1,0 +1,9 @@
+Package: naemon2influx-grafana-helper
+Section: net
+Architecture: all
+Version: __VERSION__-__RELEASE__
+Depends: grafana, naemon2influx
+Description: naemon2influx-grafana-helper provides a Grafana scripted dashboard
+ which visualize performance data collected by naemon2influx.
+ .
+Maintainer: SASAJIMA Toshihiro

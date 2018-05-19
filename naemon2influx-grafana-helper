@@ -1,0 +1,438 @@
+#!/usr/bin/perl
+
+use English;
+use IO::Handle;
+use URI::Escape;
+use URI::Query;
+use HTTP::Daemon;
+use HTTP::Status;
+use LWP::UserAgent;
+use JSON;
+use strict;
+
+our $NAME         = 'naemon2influx-grafana-helper';
+our $NAEMON2INFLUX_CFG = '/etc/naemon/naemon2influx.cfg';
+our $HELPER_CONF  = '/etc/naemon/naemon2influx-grafana-helper.conf';
+our $HELPER_RULES = '/etc/naemon/naemon2influx-grafana-helper.rules';
+our $TEMPLATEDIR  = '/etc/naemon/naemon2influx-grafana-helper.d';
+our $CACHEDIR     = '/var/cache/naemon';
+our $LOGFILE      = '/var/log/naemon/naemon2influx-grafana-helper.log';
+
+####
+our $LOGFH;
+if( open $LOGFH, '>>', $LOGFILE ){ $LOGFH->autoflush; }
+else{ $LOGFH = *STDERR; }
+
+sub debuglog ($;@) {
+	return unless $ENV{'DEBUG'};
+	my ($format, @args) = @_;
+	my ($sec,$min,$hour,$day,$mon,$year) = localtime time;
+	my $t = sprintf '%04d-%02d-%02d_%02d:%02d:%02d', $year+1900, $mon+1, $day, $hour, $min, $sec;
+	printf $LOGFH "$t $format\n", @args;
+}
+
+sub accesslog ($;@) {
+	my ($format, @args) = @_;
+	my ($sec,$min,$hour,$day,$mon,$year) = localtime time;
+	my $t = sprintf '%04d-%02d-%02d_%02d:%02d:%02d', $year+1900, $mon+1, $day, $hour, $min, $sec;
+	printf $LOGFH "$t $format\n", @args;
+}
+
+####
+sub read_naemon2influx_cfg () {
+	my $filename = $NAEMON2INFLUX_CFG;
+	my %config;
+
+	$config{'debug'} = 0;
+	$config{'timefactor'} = 9;
+	$config{'timereplacement'} = "Time";
+	$config{'separator'} = "";
+	$config{'global_prefix'} = "";
+	$config{'output'} = "http://localhost:8083";
+
+	open my $h, '<', $filename or do {
+		die "cannot open $filename: $OS_ERROR, stopped";
+	};
+	while (<$h>) {
+		next if m"^\s*#";			# skip commented lines
+		s/^\s+//;				# removes leading whitespace
+		m/^([^=]+)\s*=\s*(.*)$/x and do {	# splits into key=val pairs
+			my $key = $1;
+			my $val = $2;
+			$key =~ s/\s+$//;		# removes trailing whitespace
+			$val =~ s/\s+$//;		# removes trailing whitespace
+			$config{$key} = $val;
+		};
+	}
+	close $h or do {
+		die "close failed for $filename: $OS_ERROR, stopped";
+	};
+	return %config;
+}
+
+sub read_helper_conf () {
+	my $filename = $HELPER_CONF;
+	my %conf = (
+		'LISTENADDR' => 'localhost',
+		'LISTENPORT' => 46849,
+		'HELPERURL' => 'http://localhost:46849/',
+	);
+
+	open my $h, '<', $filename or do {
+		die "cannot open $filename: $OS_ERROR, stopped";
+	};
+	while (<$h>) {
+		next if m"^\s*(#|$)";
+		die "$filename:$.: illegal format, stopped" unless m"^(\w+)=(.*)$";
+		$conf{$1} = $2;
+	}
+	close $h or do {
+		die "close failed for $filename: $OS_ERROR, stopped";
+	};
+	return %conf;
+}
+
+sub read_helper_rules () {
+	my $filename = $HELPER_RULES;
+	my @rules;
+
+	open my $h, '<', $filename or do {
+		die "cannot open $filename: $OS_ERROR, stopped";
+	};
+	while (<$h>) {
+		next if m"^\s*(#|$)";
+		die "$filename:$.: illegal format, stopped" unless m"^(\S+)\s+(\S+)\s+(\S+)(?:\s+(\S+)(?:\s+(\w+=\S*(?:\s+\w+=\S*)*))?)?\s*$";
+		my $series_re = qr"^$1$";
+		my $field_re = qr"^$2$";
+		my $template = $3;
+		my $graphid = $4;
+		my $graphparams = $5;
+		push @rules, [$series_re, $field_re, $template, $graphid, $graphparams];
+	}
+	close $h or do {
+		die "close failed for $filename: $OS_ERROR, stopped";
+	};
+	return @rules;
+}
+
+sub read_template ($) {
+	my ($templatename) = @_;
+	my $filename = "$TEMPLATEDIR/$templatename.tmpl";
+	open my $h, '<', "$filename" or do {
+		debuglog "cannot open %s: %s", $filename, $OS_ERROR;
+		return undef;
+	};
+	my $text = join '', <$h>;
+	close $h or do {
+		debuglog "close failed for %s: %s", $filename, $OS_ERROR;
+		return undef;
+	};
+	return $text;
+}
+
+sub write_js ($$) {
+	my ($jsname, $content) = @_;
+	my $filename = "$CACHEDIR/$jsname.js";
+	open my $h, '>', "$filename" or do {
+		die "cannot open $filename: $OS_ERROR, stopped";
+	};
+	print $h $content;
+	close $h or do {
+		die "close failed for $filename: $OS_ERROR, stopped";
+	};
+	return;
+}
+
+sub service2measurement (\%$) {
+	my ($config, $service ) = @_;
+	my $global_prefix = $config->{'global_prefix'};
+	my $measurement = $global_prefix eq '' ? $service : "$global_prefix.$service";
+	my $separator = $config->{'separator'};
+	$measurement =~ s/ /$separator/g;
+	return $measurement;
+}
+
+sub query_to_influxdb (\%$) {
+	my ($config, $q ) = @_;
+	my $ua = LWP::UserAgent->new;
+	my $server_endpoint = sprintf '%s/query?db=%s&u=%s&p=%s&q=%s',
+		$config->{'output'}, $config->{'database'},
+		$config->{'username'}, $config->{'password'}, uri_escape $q;
+	my $req = HTTP::Request->new('GET' => $server_endpoint);
+	my $t = time;
+	debuglog "influxdb-req %s", $q;
+	my $res = $ua->request($req);
+	debuglog "influxdb-res: %d sec", time - $t;
+	return $res;
+}
+
+sub read_series_from_influxdb (\%$$) {
+	my ($config, $measurement, $hostname ) = @_;
+	my $q = "show series from \"$measurement\"";
+	my $res = query_to_influxdb %$config, $q;
+	if ($res->is_success) {
+		my $json = decode_json $res->decoded_content;
+		my $series = $json->{'results'}->[0]->{'series'}->[0]->{'values'};
+		my $hostname_tag = "hostname=$hostname";
+		my @series;
+		foreach my $i ( @$series ){
+			my $s = $i->[0];
+			my ($m, @tags) = split m",", $s;
+			foreach my $tag ( @tags ){
+				next unless $tag eq $hostname_tag;
+				push @series, $s;
+				last;
+			}
+		}
+		return @series;
+	}
+	else {
+		printf "query: %s\n", $q;
+		printf "code: %s\nmessage: %s\n", $res->code, $res->message;
+	}
+}
+sub read_fieldkeys_from_influxdb (\%$) {
+	my ($config, $measurement ) = @_;
+	my $q = "show field keys from \"$measurement\"";
+	my $res = query_to_influxdb %$config, $q;
+	if ($res->is_success) {
+		my $json = decode_json $res->decoded_content;
+		my $series = $json->{'results'}->[0]->{'series'}->[0]->{'values'};
+		my @fieldkeys;
+		foreach my $i ( @$series ){
+			next unless $i->[1] eq 'float';
+			push @fieldkeys, $i->[0];
+		}
+		return @fieldkeys;
+	}
+	else {
+		printf "query: %s\n", $q;
+		printf "code: %s\nmessage: %s\n", $res->code, $res->message;
+	}
+}
+
+sub read_fieldlastvalues_from_influxdb (\%$) {
+#	my ($config, $service ) = @_;
+#	my $measurement = service2measurement %$config, $service;
+#	my $q = "show field keys from \"$measurement\"";
+#	my $res = query_to_influxdb %$config, $q;
+#	if ($res->is_success) {
+#		my $h = decode_json $res->decoded_content;
+#		my $json = decode_json $res->decoded_content;
+#		my $series = $json->{'results'}->[0]->{'series'}->[0]->{'values'};
+#		my @fieldkeys;
+#		foreach my $i ( @$series ){
+#			next unless $i->[1] eq 'float';
+#			push @fieldkeys, $i->[0];
+#		}
+#		return @fieldkeys;
+#	}
+#	else {
+#		printf "query: %s\n", $q;
+#		printf "code: %s\nmessage: %s\n", $res->code, $res->message;
+#	}
+}
+
+sub expand_matches ($\@) {
+	my ($text, $matches) = @_;
+	$text =~ s{
+		(?: \$(\d+) | \$\{(\d+)\} )
+	}{
+		my $n;
+		$n = $1 if $1 ne '';
+		$n = $2 if $2 ne '';
+		$matches->[$n];
+	}egx;
+	return $text;
+}
+
+sub expand_params ($\%) {
+	my ($text, $params) = @_;
+	$text =~ s{
+		\%(\w+)\%
+	}{
+		$params->{$1};
+	}egx;
+	return $text;
+}
+
+sub generate_graph_sources (\@\@\@) {
+	my ($rules, $series, $fieldkeys) = @_;
+	my %srcs;
+	my $autoid = 'id0000';
+	foreach my $s ( @$series ){
+		foreach my $fieldkey ( @$fieldkeys ){
+			my $template;
+			my $graphid;
+			my %params;
+
+			foreach my $rule ( @$rules ){
+				my $series_re = $rule->[0];
+				my @m1 = $s =~ m"$series_re";
+				next unless @m1;
+				shift @m1 if $#+ == 0;
+
+				my $field_re = $rule->[1];
+				my @m2 = $fieldkey =~ m"$field_re";
+				next unless @m2;
+				shift @m2 if $#+ == 0;
+
+				$template = $rule->[2];
+				if( $template eq 'IGNORE' ){
+					$graphid = undef;
+					next;
+				}
+				my @m = ($fieldkey, @m1, @m2);
+
+				$graphid = expand_matches $rule->[3], @m;
+
+				foreach my $i ( split m"\s+", $rule->[4] ){
+					die "$i, stopped" unless $i =~ m"^(\w+)=(.*)$";
+					my $k = $1;
+					my $v = $2;
+					$params{$k} = expand_matches $v, @m;
+				}
+			}
+
+			$graphid = '' if $template eq 'IGNORE';
+
+			if( $graphid eq 'NEW' ){
+				$graphid = $autoid;
+				$autoid++;
+			}
+			unless( exists $srcs{$graphid} ){
+				$srcs{$graphid} = {
+					'template' => undef,
+					'params' => {},
+					'keys' => []
+				};
+			}
+			$srcs{$graphid}->{'template'} = $template;
+			push @{$srcs{$graphid}->{'keys'}}, "$s $fieldkey";
+			$srcs{$graphid}->{'params'}->{'graphid'} = $graphid;
+			while( my ($k, $v) = each %params ){
+				$srcs{$graphid}->{'params'}->{$k} = $v;
+			}
+		}
+	}
+	return %srcs;
+}
+
+sub build_graphs (\%\%) {
+	my ($srcs, $additional_params) = @_;
+	my @contents;
+	foreach my $id ( sort keys %$srcs ){
+		my $template = $srcs->{$id}->{'template'};
+		next if $template eq 'IGNORE';
+		my %params = %{$srcs->{$id}->{'params'}};
+		while( my ($k, $v) = each %$additional_params ){
+			$params{$k} = $v;
+		}
+		my $template_text = read_template $template;
+		my $text = expand_params $template_text, %params;
+		push @contents, $text;
+	}
+	return @contents;
+}
+
+sub request (\%\@$$) {
+	my ($config, $rules, $hostname, $servicename) = @_;
+	my $measurement = service2measurement %$config, $servicename;
+	my %additional_params = (
+		'hostname' => $hostname,
+		'servicename' => $servicename,
+		'measurement' => $measurement,
+	);
+	my @keys = read_fieldkeys_from_influxdb %$config, $measurement; 
+	my @series = read_series_from_influxdb %$config, $measurement, $hostname; 
+	my %srcs = generate_graph_sources @$rules, @series, @keys;
+
+	foreach my $graphid ( sort keys %srcs ){
+		my $template = $srcs{$graphid}->{'template'};
+		next if $template eq 'IGNORE';
+		debuglog "graphid=%s template=%s", $graphid, $template;
+		foreach my $i ( @{$srcs{$graphid}->{'keys'}} ){
+			debuglog "	%s", $i;
+		}
+	}
+
+	my @rows = build_graphs %srcs, %additional_params;
+	my $rows = "[" . join(',', @rows) . "]\n";
+	return $rows;
+}
+
+####
+my %n2icfg = read_naemon2influx_cfg;
+my %conf = read_helper_conf;
+my @rules = read_helper_rules; 
+
+##
+#my $hostname = 'rosetta';
+#my $measurement = service2measurement %n2icfg, 'Disk';
+#my @keys = read_fieldkeys_from_influxdb %n2icfg, $measurement; 
+#my @series = read_series_from_influxdb %n2icfg, $measurement, $hostname;
+#my %srcs = generate_graph_sources @rules, @series, @keys;
+#foreach my $graphid ( sort keys %srcs ){
+#	my $template = $srcs{$graphid}->{'template'};
+#	next if $template eq 'IGNORE';
+#	print "DEBUG: graphid=$graphid template=$template\n";
+#	foreach my $i ( @{$srcs{$graphid}->{'keys'}} ){
+#		print "	$i\n";
+#	}
+#}
+#print "DEBUG2: @keys\n";
+#print "DEBUG2: @series\n";
+#exit 0;
+##
+
+$0 = $NAME;
+my $dashboard_tmpl = read_template "naemon2influx-grafana-helper";
+my $dashboard_js = expand_params $dashboard_tmpl, %conf;
+write_js "naemon2influx-grafana-helper", $dashboard_js;
+my $d = HTTP::Daemon->new(
+	'LocalAddr' => $conf{'LISTENADDR'},
+	'LocalPort' => $conf{'LISTENPORT'}
+) or do {
+	die sprintf 'cannot listen %s:%d: %s, stopped', $conf{'LISTENADDR'}, $conf{'LISTENPORT'}, $OS_ERROR;
+};
+
+$SIG{'TERM'} = sub {
+	$d->shutdown;
+};
+$SIG{'HUP'} = sub {
+	if( open $LOGFH, '>>', $LOGFILE ){ $LOGFH->autoflush; }
+	else{ $LOGFH = *STDERR; }
+};
+
+while (my $c = $d->accept) {
+	my $r = $c->get_request;
+	if($r->method eq 'GET'){
+		my $path = uri_unescape( $r->uri->path );
+		my $query = URI::Query->new( $r->uri->query );
+		my %query = $query->hash;
+		my $callback = $query{'callback'};
+		$callback = 'callback_from_helper' unless defined $callback;
+		unless( $path =~ m"^/([^/]+)/(.*)$") {
+			$c->send_error(RC_FORBIDDEN);
+			next;
+		}
+		my $hostname = $1;
+		my $servicename = $2;
+		accesslog 'req: path=%s query=%s', $path, $query;
+
+		my $content = request %n2icfg, @rules, $hostname, $servicename;
+
+		my $res = HTTP::Response->new;
+		$res->code(200);
+		$res->header('Content-Type' => 'text/javascript');
+		$res->content("$callback($content);");
+		$c->send_response($res);
+	}else{
+		$c->send_error(RC_FORBIDDEN);
+		next;
+	}
+	$c->close;
+	undef($c);
+}
+
+
