@@ -1,0 +1,5 @@
+naemon2influx-grafana-helper (0.1-1) unstable; urgency=medium
+
+  * Initial release.
+
+ -- SASAJIMA Toshihiro <frisky-.-gh@watao3.info>  Sun, 20 May 2018 00:58:41 +0900

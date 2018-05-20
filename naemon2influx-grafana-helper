@@ -336,11 +336,11 @@ sub build_graphs (\%\%) {
 }
 
 sub request (\%\@$$) {
-	my ($config, $rules, $hostname, $servicename) = @_;
-	my $measurement = service2measurement %$config, $servicename;
+	my ($config, $rules, $hostname, $servicedesc) = @_;
+	my $measurement = service2measurement %$config, $servicedesc;
 	my %additional_params = (
 		'hostname' => $hostname,
-		'servicename' => $servicename,
+		'servicedesc' => $servicedesc,
 		'measurement' => $measurement,
 	);
 	my @keys = read_fieldkeys_from_influxdb %$config, $measurement; 
@@ -416,11 +416,15 @@ while (my $c = $d->accept) {
 			$c->send_error(RC_FORBIDDEN);
 			next;
 		}
+		unless( $collback =~ m"^\w+$") {
+			$c->send_error(RC_FORBIDDEN);
+			next;
+		}
 		my $hostname = $1;
-		my $servicename = $2;
+		my $servicedesc = $2;
 		accesslog 'req: path=%s query=%s', $path, $query;
 
-		my $content = request %n2icfg, @rules, $hostname, $servicename;
+		my $content = request %n2icfg, @rules, $hostname, $servicedesc;
 
 		my $res = HTTP::Response->new;
 		$res->code(200);
@@ -435,4 +439,63 @@ while (my $c = $d->accept) {
 	undef($c);
 }
 
+exit 0;
+
+=pod
+
+=encoding utf8
+
+=head1 NAME
+
+naemon2influx-grafana-helper
+
+=head1 SYNOPSIS
+
+naemon2influx-grafana-helper
+
+=head1 DESCRIPTION
+
+naemon2influx-grafana-helper generates Grafana panel JSONP for scripted
+dashboard from InfluxDB tags and series.
+
+This helper works as HTTP daemon. This helper is requested with hostname
+and servicedesc, and responses JSONP.
+
+=head1 OPTIONS
+
+=over 8
+
+Nothing to do.
+
+=back
+
+=head1 ENVIRONMENT
+
+=over 8
+
+=item DEBUG
+
+F</etc/naemon/naemon2influx.cfg>
+
+=back
+
+=head1 FILES
+
+=over 8
+
+=item F</etc/naemon/naemon2influx-grafana-helper.conf>
+
+=item F</etc/naemon/naemon2influx-grafana-helper.rules>
+
+=item F</etc/naemon/naemon2influx-grafana-helper.d/*.tmpl>
+
+=back
+
+=head1 AUTHOR
+
+SASAJIMA Toshihiro
+
+=head1 SEE ALSO
+
+L<naemon2influx-grafana-helper.conf(5)>
 

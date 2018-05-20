@@ -4,20 +4,20 @@ var window, document, ARGS, $, jQuery, moment, kbn;
 return function (callback_to_grafana) {
 	var hostname = 'localhost';
 	if(!_.isUndefined(ARGS.hostname)) { hostname = ARGS.hostname; }
-	var servicename = 'OS Performance';
-	if(!_.isUndefined(ARGS.servicename)) { servicename = ARGS.servicename; }
+	var servicedesc = 'OS Performance';
+	if(!_.isUndefined(ARGS.servicedesc)) { servicedesc = ARGS.servicedesc; }
 	var from = 'now-7d';
 	if(!_.isUndefined(ARGS.from)) { from = ARGS.from; }
 	var to = 'now';
 	if(!_.isUndefined(ARGS.to)) { to = ARGS.to; }
 
 	var helperbaseurl = '%HELPERURL%';
-	var helperurl = helperbaseurl + hostname + '/' + servicename;
+	var helperurl = helperbaseurl + hostname + '/' + servicedesc;
         console.log("ajaxurl: " + helperurl + "\n");
 	var dashboard = {
 		"id": 1,
-		"title": servicename + " in " + hostname,
-		"originalTitle": servicename + " in " + hostname,
+		"title": servicedesc + " in " + hostname,
+		"originalTitle": servicedesc + " in " + hostname,
 		"tags": [],
 		"style": "dark",
 		"timezone": "browser",
