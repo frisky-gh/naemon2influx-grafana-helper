@@ -33,7 +33,9 @@ fi
 case "$1" in
   start)
 	log_daemon_msg "Starting $NAME" || true
-	if start-stop-daemon --start --quiet --oknodo -m --pidfile $PIDFILE -c naemon -b --exec $DAEMON -- ; then
+	if start-stop-daemon --status --quiet --oknodo --pidfile $PIDFILE -u naemon ; then
+		log_end_msg 0 || true
+	elif start-stop-daemon --start --quiet --oknodo -m --pidfile $PIDFILE -c naemon -b --exec $DAEMON -- ; then
 		log_end_msg 0 || true
 	else
 		log_end_msg 1 || true
@@ -48,22 +50,32 @@ case "$1" in
 	fi
 	;;
   status)
-        status $prog
-        ;;
+	log_daemon_msg "Status $NAME" || true
+	if start-stop-daemon --status --quiet --oknodo --pidfile $PIDFILE -u naemon ; then
+		log_end_msg 0 || true
+	else
+		log_end_msg 1 || true
+	fi
+	;;
   restart|force-reload)
-        stop
-        start
-        ;;
-  try-restart|condrestart)
-        if status $prog > /dev/null; then
-            stop
-            start
-        fi
-        ;;
+	log_daemon_msg "Restarting $NAME" || true
+	start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILE
+	sleep 1
+	if start-stop-daemon --start --quiet --oknodo -m --pidfile $PIDFILE -c naemon -b --exec $DAEMON -- ; then
+		log_end_msg 0 || true
+	else
+		log_end_msg 1 || true
+	fi
+	;;
   reload)
-        exit 3
-        ;;
+	log_daemon_msg "Reloading $NAME" $NAME || true
+	if start-stop-daemon --stop --signal HUP --quiet --oknodo --pidfile $PIDFILE -u naemon ; then
+		log_end_msg 0 || true
+	else
+		log_end_msg 1 || true
+	fi
+	;;
   *)
-        echo $"Usage: $0 {start|stop|status|restart|try-restart|force-reload}"
-        exit 2
+	echo $"Usage: $0 {start|stop|status|restart|reload|force-reload}"
+	exit 2
 esac

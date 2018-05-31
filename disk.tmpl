@@ -193,13 +193,9 @@
               "resultFormat": "time_series",
               "refId": "A",
               "measurement": "%measurement%",
-              "query": "SELECT \"disk_iavail_pct\" AS \"available %\", \"disk_iavail_pct.warn_lower\" AS \"warning\", \"disk_iavail_pct.crit_lower\" AS \"critical\" FROM \"%measurement%\" WHERE \"hostname\" = '%hostname%' and disk = '%target%'",
 	      "alias": "$col",
               "groupBy": [],
-              "tags": [
-                { "key": "hostname", "operator": "=", "value": "%hostname%" },
-                { "key": "disk", "operator": "=", "value": "%target%" }
-              ],
+              "tags": %tags%,
               "select": [
                 [
 		  { "type": "field", "params": [ "disk_iavail_pct" ] },

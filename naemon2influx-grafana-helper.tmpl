@@ -12,7 +12,9 @@ return function (callback_to_grafana) {
 	if(!_.isUndefined(ARGS.to)) { to = ARGS.to; }
 
 	var helperbaseurl = '%HELPERURL%';
-	var helperurl = helperbaseurl + hostname + '/' + servicedesc;
+	var helperurl = helperbaseurl +
+		'rows.js?hostname=' + hostname +
+		'&servicedesc=' + servicedesc;
         console.log("ajaxurl: " + helperurl + "\n");
 	var dashboard = {
 		"id": 1,

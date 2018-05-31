@@ -152,6 +152,27 @@ sub service2measurement (\%$) {
 	return $measurement;
 }
 
+sub series2measurementandtags ($) {
+	my ($series) = @_;
+	my ($measurement, @tags) = split ",", $series;
+	my %tags;
+	foreach my $tag ( @tags ){
+		my ($k, $v) = split "=", $tag;
+		$tags{$k} = $v;
+	}
+	return $measurement, %tags;
+}
+
+sub measurementandtags2series ($%) {
+	my ($measurement, %tags) = @_;
+	my $series = $measurement;
+	foreach my $k ( sort keys %tags ){
+		my $v = $tags{$k};
+		$series .= ",$k=$v";
+	}
+	return $series;
+}
+
 sub query_to_influxdb (\%$) {
 	my ($config, $q ) = @_;
 	my $ua = LWP::UserAgent->new;
@@ -173,16 +194,16 @@ sub read_series_from_influxdb (\%$$) {
 	if ($res->is_success) {
 		my $json = decode_json $res->decoded_content;
 		my $series = $json->{'results'}->[0]->{'series'}->[0]->{'values'};
-		my $hostname_tag = "hostname=$hostname";
 		my @series;
 		foreach my $i ( @$series ){
 			my $s = $i->[0];
-			my ($m, @tags) = split m",", $s;
-			foreach my $tag ( @tags ){
-				next unless $tag eq $hostname_tag;
-				push @series, $s;
-				last;
+			my ($m, %tags) = series2measurementandtags $s;
+			next unless $tags{'hostname'} eq $hostname;
+			foreach my $hiddentag ( 'state' ){
+				delete $tags{$hiddentag};
 			}
+			$s = measurementandtags2series $m, %tags;
+			push @series, $s;
 		}
 		return @series;
 	}
@@ -261,6 +282,21 @@ sub generate_graph_sources (\@\@\@) {
 	my %srcs;
 	my $autoid = 'id0000';
 	foreach my $s ( @$series ){
+		my ($measurement, %tags) = series2measurementandtags $s;
+		##
+		my @tags_text;
+		my @tags_json;
+		my @tags_where;
+		foreach my $k ( sort keys %tags ){
+			my $v = $tags{$k};
+			push @tags_text, "$k=$v";
+			push @tags_json, "{\"key\":\"$k\",\"operator\":\"=\",\"value\":\"$v\"}";
+			push @tags_where, "\\\"$k\\\" = '$v'";
+		}
+		my $tags_text = join ',', @tags_text;
+		my $tags_json = '[' . join( ',', @tags_json ) . ']';
+		my $tags_where = join ' and ', @tags_where, '$timeFilter';
+		##
 		foreach my $fieldkey ( @$fieldkeys ){
 			my $template;
 			my $graphid;
@@ -309,6 +345,13 @@ sub generate_graph_sources (\@\@\@) {
 			}
 			$srcs{$graphid}->{'template'} = $template;
 			push @{$srcs{$graphid}->{'keys'}}, "$s $fieldkey";
+			$srcs{$graphid}->{'params'}->{'fieldkey'} = $fieldkey;
+			$srcs{$graphid}->{'params'}->{'series'} = $s;
+			$srcs{$graphid}->{'params'}->{'measurement'} = $measurement;
+			$srcs{$graphid}->{'params'}->{'tags'} = $tags_json;
+			$srcs{$graphid}->{'params'}->{'tags_text'} = $tags_text;
+			$srcs{$graphid}->{'params'}->{'tags_json'} = $tags_json;
+			$srcs{$graphid}->{'params'}->{'tags_where'} = $tags_where;
 			$srcs{$graphid}->{'params'}->{'graphid'} = $graphid;
 			while( my ($k, $v) = each %params ){
 				$srcs{$graphid}->{'params'}->{$k} = $v;
@@ -346,8 +389,12 @@ sub request (\%\@$$) {
 	my @keys = read_fieldkeys_from_influxdb %$config, $measurement; 
 	my @series = read_series_from_influxdb %$config, $measurement, $hostname; 
 	my %srcs = generate_graph_sources @$rules, @series, @keys;
+	my @graphids = sort keys %srcs;
+	debuglog '	fieldkeys: %s', join(' ', @keys);
+	debuglog '	series   : %s', join(' ', @series);
+	debuglog '	graphids : %s', join(' ', @graphids);
 
-	foreach my $graphid ( sort keys %srcs ){
+	foreach my $graphid ( @graphids ){
 		my $template = $srcs{$graphid}->{'template'};
 		next if $template eq 'IGNORE';
 		debuglog "graphid=%s template=%s", $graphid, $template;
@@ -390,6 +437,7 @@ my $dashboard_tmpl = read_template "naemon2influx-grafana-helper";
 my $dashboard_js = expand_params $dashboard_tmpl, %conf;
 write_js "naemon2influx-grafana-helper", $dashboard_js;
 my $d = HTTP::Daemon->new(
+	'Reuse' => 1,
 	'LocalAddr' => $conf{'LISTENADDR'},
 	'LocalPort' => $conf{'LISTENPORT'}
 ) or do {
@@ -410,18 +458,26 @@ while (my $c = $d->accept) {
 		my $path = uri_unescape( $r->uri->path );
 		my $query = URI::Query->new( $r->uri->query );
 		my %query = $query->hash;
+		unless( $path =~ m"^/rows.js$") {
+			$c->send_error(RC_FORBIDDEN);
+			next;
+		}
 		my $callback = $query{'callback'};
 		$callback = 'callback_from_helper' unless defined $callback;
-		unless( $path =~ m"^/([^/]+)/(.*)$") {
+		my $hostname = $query{'hostname'};
+		my $servicedesc = $query{'servicedesc'};
+		unless( $callback =~ m"^\w{1,80}$") {
 			$c->send_error(RC_FORBIDDEN);
 			next;
 		}
-		unless( $collback =~ m"^\w+$") {
+		unless( $hostname =~ m"^\S{1,80}$" && $hostname !~ m"[=,;]" ) {
 			$c->send_error(RC_FORBIDDEN);
 			next;
 		}
-		my $hostname = $1;
-		my $servicedesc = $2;
+		unless( $servicedesc =~ m"^\S{1,80}$" && $servicedesc !~ m"[=,;]" ) {
+			$c->send_error(RC_FORBIDDEN);
+			next;
+		}
 		accesslog 'req: path=%s query=%s', $path, $query;
 
 		my $content = request %n2icfg, @rules, $hostname, $servicedesc;

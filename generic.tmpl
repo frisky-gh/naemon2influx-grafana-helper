@@ -4,7 +4,7 @@
       "editable": true,
       "height": "250px",
       "panels": [ {
-          "title": "%servicedesc% - %target%",
+          "title": "%series% - %fieldkey%",
           "id": 1,
           "isNew": true,
           "editable": true,
@@ -15,27 +15,29 @@
           "y_formats": [ "short" ],
           "grid": { "leftLogBase": 1, "leftMax": null, "leftMin": null },
           "legend": {
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
             "show": true,
-            "total": false,
-            "values": false
+	    "values": false, "avg": true, "max": true, "min": true, "current": false, "total": false,
+	    "rightSide": false, "alignAsTable": false,
+	    "hideEmpty": true, "hideZero": false
           },
           "targets": [ {
               "dsType": "influxdb",
               "resultFormat": "time_series",
+              "alias": "$col",
               "groupBy": [],
               "measurement": "%measurement%",
-              "tags": [ { "key": "hostname", "operator": "=", "value": "%hostname%" } ],
-              "query": "SELECT \"%target%\" AS \"value\", \"%target%.warn_upper\" AS \"warn_upper\", \"%target%.warn_lower\" AS \"warn_lower\", \"%target%.crit_upper\" AS \"crit_upper\", \"%target%.crit_lower\" AS \"crit_lower\" FROM \"%measurement%\" WHERE \"hostname\" = '%hostname%'",
+              "tags": %tags%,
               "select": [
-                [ { "type": "field", "params": [ "%target%" ] } ],
-                [ { "type": "field", "params": [ "%target%.warn_upper" ] } ],
-                [ { "type": "field", "params": [ "%target%.warn_lower" ] } ],
-                [ { "type": "field", "params": [ "%target%.crit_upper" ] } ],
-                [ { "type": "field", "params": [ "%target%.crit_lower" ] } ]
+                [ { "type": "field", "params": [ "%fieldkey%.warn_upper" ] },
+                  { "type": "alias", "params": [ "warn_upper" ] } ],
+                [ { "type": "field", "params": [ "%fieldkey%.warn_lower" ] },
+                  { "type": "alias", "params": [ "warn_lower" ] } ],
+                [ { "type": "field", "params": [ "%fieldkey%.crit_upper" ] },
+                  { "type": "alias", "params": [ "crit_upper" ] } ],
+                [ { "type": "field", "params": [ "%fieldkey%.crit_lower" ] },
+                  { "type": "alias", "params": [ "crit_lower" ] } ],
+                [ { "type": "field", "params": [ "%fieldkey%" ] },
+                  { "type": "alias", "params": [ "value" ] } ]
               ]
           } ]
       } ]
