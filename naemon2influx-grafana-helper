@@ -149,6 +149,8 @@ sub service2measurement (\%$) {
 	my $measurement = $global_prefix eq '' ? $service : "$global_prefix.$service";
 	my $separator = $config->{'separator'};
 	$measurement =~ s/ /$separator/g;
+	my $trimpattern = $config->{'trimpattern'};
+	$measurement =~ s/$trimpattern//g if $trimpattern;
 	return $measurement;
 }
 
@@ -289,7 +291,7 @@ sub generate_graph_sources (\@\@\@) {
 		my @tags_where;
 		foreach my $k ( sort keys %tags ){
 			my $v = $tags{$k};
-			push @tags_text, "$k=$v";
+			push @tags_text, "$k=$v" unless $k eq 'hostname';
 			push @tags_json, "{\"key\":\"$k\",\"operator\":\"=\",\"value\":\"$v\"}";
 			push @tags_where, "\\\"$k\\\" = '$v'";
 		}
