@@ -4,8 +4,9 @@
       "editable": true,
       "height": "250px",
       "panels": [ {
-          "title": "%servicedesc% - %target%",
-          "id": 1,
+          "title": "%servicedesc% - CPU Activity",
+          "id": "cpu0001",
+	  "datasource": "%grafanadatasource%",
           "isNew": true,
           "editable": true,
           "tooltip": { "shared": true, "value_type": "individual" },
@@ -24,6 +25,7 @@
             "values": false
           },
           "targets": [ {
+	      "refId": "0001",
               "dsType": "influxdb",
               "resultFormat": "time_series",
               "groupBy": [],

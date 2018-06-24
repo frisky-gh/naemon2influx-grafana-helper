@@ -7,7 +7,8 @@
       "panels": [
         {
           "title": "%servicedesc% - %hostname%:%target%",
-          "id": 1,
+          "id": "disk0001",
+	  "datasource": "%grafanadatasource%",
           "isNew": true,
           "editable": true,
           "span": 6,
@@ -30,11 +31,11 @@
           },
           "targets": [
             {
+	      "refId": "0001",
               "dsType": "influxdb",
               "resultFormat": "time_series",
               "refId": "A",
               "measurement": "%measurement%",
-              "query": "SELECT \"disk_total\" AS \"total size\", \"disk_avail\" AS \"available size\" FROM \"%measurement%\" WHERE \"hostname\" = '%hostname%' and disk = '%target%'",
 	      "alias": "$col",
               "groupBy": [],
               "tags": [
@@ -56,7 +57,8 @@
         },
         {
           "title": "%servicedesc% Available % - %hostname%:%target%",
-          "id": 2,
+          "id": "disk0002",
+	  "datasource": "%grafanadatasource%",
           "isNew": true,
           "editable": true,
           "span": 6,
@@ -79,11 +81,11 @@
           },
           "targets": [
             {
+	      "refId": "0001",
               "dsType": "influxdb",
               "resultFormat": "time_series",
               "refId": "A",
               "measurement": "%measurement%",
-              "query": "SELECT \"disk_avail_pct\" AS \"available %\", \"disk_avail_pct.warn_lower\" AS \"warning\", \"disk_avail_pct.crit_lower\" AS \"critical\" FROM \"%measurement%\" WHERE \"hostname\" = '%hostname%' and disk = '%target%'",
 	      "alias": "$col",
               "groupBy": [],
               "tags": [
@@ -117,7 +119,8 @@
       "panels": [
         {
           "title": "Disk i-node - %hostname%:%target%",
-          "id": 1,
+          "id": "disk0003",
+	  "datasource": "%grafanadatasource%",
           "isNew": true,
           "editable": true,
           "span": 6,
@@ -140,11 +143,11 @@
           },
           "targets": [
             {
+	      "refId": "0001",
               "dsType": "influxdb",
               "resultFormat": "time_series",
               "refId": "A",
               "measurement": "%measurement%",
-              "query": "SELECT \"disk_itotal\" AS \"total size\", \"disk_iavail\" AS \"available size\" FROM \"%measurement%\" WHERE \"hostname\" = '%hostname%' and disk = '%target%'",
 	      "alias": "$col",
               "groupBy": [],
               "tags": [
@@ -166,7 +169,8 @@
         },
         {
           "title": "Disk i-node Available % - %hostname%:%target%",
-          "id": 2,
+          "id": "disk0004",
+	  "datasource": "%grafanadatasource%",
           "isNew": true,
           "editable": true,
           "span": 6,
@@ -189,6 +193,7 @@
           },
           "targets": [
             {
+	      "refId": "0001",
               "dsType": "influxdb",
               "resultFormat": "time_series",
               "refId": "A",

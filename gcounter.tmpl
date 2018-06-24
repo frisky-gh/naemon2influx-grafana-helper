@@ -5,7 +5,8 @@
       "height": "250px",
       "panels": [ {
           "title": "%tags_text% - %fieldkey%",
-          "id": 1,
+          "id": "gcounter0001",
+	  "datasource": "%grafanadatasource%",
           "isNew": true,
           "editable": true,
           "tooltip": { "shared": true, "value_type": "individual" },
@@ -21,7 +22,7 @@
 	    "hideEmpty": true, "hideZero": false
           },
           "targets": [ {
-	      "refId": "A",
+	      "refId": "0001",
               "dsType": "influxdb",
               "resultFormat": "time_series",
               "alias": "$col",

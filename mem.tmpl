@@ -5,7 +5,8 @@
       "height": "250px",
       "panels": [ {
           "title": "%servicedesc% - %field%",
-          "id": 1,
+          "id": "mem0001",
+	  "datasource": "%grafanadatasource%",
           "isNew": true,
           "editable": true,
           "tooltip": { "shared": true, "value_type": "individual" },
@@ -24,12 +25,12 @@
             "values": false
           },
           "targets": [ {
+	      "refId": "0001",
               "dsType": "influxdb",
               "resultFormat": "time_series",
               "groupBy": [],
               "measurement": "%measurement%",
               "tags": [ { "key": "hostname", "operator": "=", "value": "%hostname%" } ],
-              "query": "SELECT \"mem_total%\", \"mem_available\", \"mem_buffers\", \"mem_cached\", \"mem_free\" FROM \"%measurement%\" WHERE \"hostname\" = '%hostname%'",
               "select": [
                 [ { "type": "field", "params": [ "mem_total" ] } ],
                 [ { "type": "field", "params": [ "mem_available" ] } ],

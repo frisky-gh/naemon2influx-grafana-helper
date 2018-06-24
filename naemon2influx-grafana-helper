@@ -76,6 +76,7 @@ sub read_helper_conf () {
 		'LISTENADDR' => 'localhost',
 		'LISTENPORT' => 46849,
 		'HELPERURL' => 'http://localhost:46849/',
+		'GRAFANADATASOURCE' => 'influxdb',
 	);
 
 	open my $h, '<', $filename or do {
@@ -380,13 +381,14 @@ sub build_graphs (\%\%) {
 	return @contents;
 }
 
-sub request (\%\@$$) {
-	my ($config, $rules, $hostname, $servicedesc) = @_;
+sub request (\%\@$$$) {
+	my ($config, $rules, $hostname, $servicedesc, $grafanadatasource) = @_;
 	my $measurement = service2measurement %$config, $servicedesc;
 	my %additional_params = (
 		'hostname' => $hostname,
 		'servicedesc' => $servicedesc,
 		'measurement' => $measurement,
+		'GRAFANADATASOURCE' => $grafanadatasource,
 	);
 	my @keys = read_fieldkeys_from_influxdb %$config, $measurement; 
 	my @series = read_series_from_influxdb %$config, $measurement, $hostname; 
@@ -445,6 +447,7 @@ my $d = HTTP::Daemon->new(
 ) or do {
 	die sprintf 'cannot listen %s:%d: %s, stopped', $conf{'LISTENADDR'}, $conf{'LISTENPORT'}, $OS_ERROR;
 };
+my $grafanadatasource = $conf{'GRAFANADATASOURCE'};
 
 $SIG{'TERM'} = sub {
 	$d->shutdown;
@@ -482,7 +485,7 @@ while (my $c = $d->accept) {
 		}
 		accesslog 'req: path=%s query=%s', $path, $query;
 
-		my $content = request %n2icfg, @rules, $hostname, $servicedesc;
+		my $content = request %n2icfg, @rules, $hostname, $servicedesc, $grafanadatasource;
 
 		my $res = HTTP::Response->new;
 		$res->code(200);

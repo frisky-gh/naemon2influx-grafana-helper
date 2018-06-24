@@ -5,7 +5,8 @@
       "height": "250px",
       "panels": [ {
           "title": "%servicedesc% - %target%",
-          "id": 1,
+          "id": "gvolume0001",
+	  "datasource": "%grafanadatasource%",
           "isNew": true,
           "editable": true,
           "tooltip": { "shared": true, "value_type": "individual" },
@@ -24,12 +25,12 @@
             "values": false
           },
           "targets": [ {
+	      "refId": "0001",
               "dsType": "influxdb",
               "resultFormat": "time_series",
               "groupBy": [],
               "measurement": "%measurement%",
               "tags": [ { "key": "hostname", "operator": "=", "value": "%hostname%" } ],
-              "query": "SELECT \"%target%_total\" AS \"total\", \"%target%_avail\" AS \"avail\", \"%target%_free\" AS \"free\",  \"%target%_used\" AS \"used\", \"%target%_avail.warn_lower\" AS \"avail_warn_lower\", \"%target%_avail.crit_lower\" AS \"avail_crit_lower\", \"%target%_free.warn_lower\" AS \"free_avail_lower\", \"%target%_free.crit_lower\" AS \"free_crit_lower\" FROM \"%measurement%\" WHERE \"hostname\" = '%hostname%'",
               "select": [
                 [ { "type": "field", "params": [ "%target%_total" ] } ],
                 [ { "type": "field", "params": [ "%target%_avail" ] } ],

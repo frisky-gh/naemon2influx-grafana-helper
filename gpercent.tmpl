@@ -4,8 +4,9 @@
       "editable": true,
       "height": "250px",
       "panels": [ {
-          "title": "%servicedesc% - %target%",
-          "id": 1,
+          "title": "%servicedesc% - %fieldkey%",
+          "id": "gpercent0001",
+	  "datasource": "%grafanadatasource%",
           "isNew": true,
           "editable": true,
           "tooltip": { "shared": true, "value_type": "individual" },
@@ -24,18 +25,18 @@
             "values": false
           },
           "targets": [ {
+	      "refId": "0001",
               "dsType": "influxdb",
               "resultFormat": "time_series",
               "groupBy": [],
               "measurement": "%measurement%",
-              "tags": [ { "key": "hostname", "operator": "=", "value": "%hostname%" } ],
-              "query": "SELECT \"%target%\" AS \"value\", \"%target%_.warn_upper\" AS \"warn_upper\", \"%target%.warn_lower\" AS \"warn_lower\", \"%target%.crit_upper\" AS \"crit_upper\", \"%target%.crit_lower\" AS \"crit_lower\" FROM \"%measurement%\" WHERE \"hostname\" = '%hostname%'",
+              "tags": %tags%,
               "select": [
-                [ { "type": "field", "params": [ "%target%" ] } ],
-                [ { "type": "field", "params": [ "%target%.warn_upper" ] } ],
-                [ { "type": "field", "params": [ "%target%.warn_lower" ] } ],
-                [ { "type": "field", "params": [ "%target%.crit_upper" ] } ],
-                [ { "type": "field", "params": [ "%target%.crit_lower" ] } ]
+                [ { "type": "field", "params": [ "%fieldkey%" ] } ],
+                [ { "type": "field", "params": [ "%fieldkey%.warn_upper" ] } ],
+                [ { "type": "field", "params": [ "%fieldkey%.warn_lower" ] } ],
+                [ { "type": "field", "params": [ "%fieldkey%.crit_upper" ] } ],
+                [ { "type": "field", "params": [ "%fieldkey%.crit_lower" ] } ]
               ]
           } ]
       } ]

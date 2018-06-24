@@ -4,8 +4,9 @@
       "editable": true,
       "height": "250px",
       "panels": [ {
-          "title": "%series% - %fieldkey%",
-          "id": 1,
+          "title": " %servicedesc% %tags_text% - %fieldkey%",
+          "id": "generic0001",
+	  "datasource": "%grafanadatasource%",
           "isNew": true,
           "editable": true,
           "tooltip": { "shared": true, "value_type": "individual" },
@@ -21,6 +22,7 @@
 	    "hideEmpty": true, "hideZero": false
           },
           "targets": [ {
+	      "refId": "0001",
               "dsType": "influxdb",
               "resultFormat": "time_series",
               "alias": "$col",

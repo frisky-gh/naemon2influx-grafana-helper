@@ -1,0 +1,6 @@
+/.pc/
+/debian/*.log
+/debian/debhelper-build-stamp
+/debian/naemon2influx-grafana-helper/
+/debian/source
+/*.gz
