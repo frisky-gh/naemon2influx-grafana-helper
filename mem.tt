@@ -1,0 +1,58 @@
+//// Memory
+[%- targetname = sub(hostname, "/.*$", "") %]
+[%- targettype = sub(hostname, "^.*/", "") %]
+[%- detectorname = sub(servicedesc, "^.*_", "") %]
+{
+    "title": "Row",
+    "collapse": false,
+    "editable": true,
+    "height": "250px",
+    "panels": [ {
+	"title": "Memory in [%targetname%]",
+	"id": "[%serialid%]-mem0001",
+	"datasource": "[%GRAFANADATASOURCE%]",
+        "isNew": true,
+        "editable": true,
+        "tooltip": { "shared": true, "value_type": "individual" },
+        "type": "graph",
+        "x-axis": true,
+        "y-axis": true,
+        "y_formats": [ "short" ],
+        "grid": { "leftLogBase": 1, "leftMax": null, "leftMin": null },
+	"gridPos": { "w": 12, "h": 6, "x": 0, "y": 0 },
+	"span": 12,
+        "legend": {
+            "show": true,
+            "values": true, "avg": true, "max": true, "min": true, "current": false, "total": false,
+            "rightSide": true, "alignAsTable": true, "sideWidth": 300,
+            "hideEmpty": true, "hideZero": false
+        },
+        "targets": [ {
+	    "refId": "0001",
+            "dsType": "influxdb",
+            "resultFormat": "time_series",
+	    "alias": "$col",
+	    "groupBy": [ { "type": "time", "params": [ "$__interval" ] } ],
+            "measurement": "[%measurement%]",
+            "tags": [ { "key": "hostname", "operator": "=", "value": "[%hostname%]" } ],
+            "select": [
+                [ { "type": "field", "params": [ "mem_total" ] },
+		  { "type": "mean",  "params": [] },
+		  { "type": "alias", "params": [ "total" ] } ],
+                [ { "type": "field", "params": [ "mem_available" ] },
+		  { "type": "mean",  "params": [] },
+		  { "type": "alias", "params": [ "avail" ] } ],
+                [ { "type": "field", "params": [ "mem_buffers" ] },
+		  { "type": "mean",  "params": [] },
+		  { "type": "alias", "params": [ "buffers" ] } ],
+                [ { "type": "field", "params": [ "mem_cached" ] },
+		  { "type": "mean",  "params": [] },
+		  { "type": "alias", "params": [ "cached" ] } ],
+                [ { "type": "field", "params": [ "mem_free" ] },
+		  { "type": "mean",  "params": [] },
+		  { "type": "alias", "params": [ "free" ] } ]
+            ]
+        } ],
+	"nullPointMode": "connected"
+    } ]
+}

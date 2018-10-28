@@ -8,6 +8,7 @@ use HTTP::Daemon;
 use HTTP::Status;
 use LWP::UserAgent;
 use JSON;
+use Template;
 use strict;
 
 our $NAME         = 'naemon2influx-grafana-helper';
@@ -22,9 +23,10 @@ our $LOGFILE      = '/var/log/naemon/naemon2influx-grafana-helper.log';
 our $LOGFH;
 if( open $LOGFH, '>>', $LOGFILE ){ $LOGFH->autoflush; }
 else{ $LOGFH = *STDERR; }
+our $DEBUG = 0;
 
 sub debuglog ($;@) {
-	return unless $ENV{'DEBUG'};
+	return unless $DEBUG;
 	my ($format, @args) = @_;
 	my ($sec,$min,$hour,$day,$mon,$year) = localtime time;
 	my $t = sprintf '%04d-%02d-%02d_%02d:%02d:%02d', $year+1900, $mon+1, $day, $hour, $min, $sec;
@@ -77,6 +79,7 @@ sub read_helper_conf () {
 		'LISTENPORT' => 46849,
 		'HELPERURL' => 'http://localhost:46849/',
 		'GRAFANADATASOURCE' => 'influxdb',
+		'DEBUG' => 0,
 	);
 
 	open my $h, '<', $filename or do {
@@ -118,7 +121,7 @@ sub read_helper_rules () {
 
 sub read_template ($) {
 	my ($templatename) = @_;
-	my $filename = "$TEMPLATEDIR/$templatename.tmpl";
+	my $filename = "$TEMPLATEDIR/$templatename.tt";
 	open my $h, '<', "$filename" or do {
 		debuglog "cannot open %s: %s", $filename, $OS_ERROR;
 		return undef;
@@ -197,7 +200,7 @@ sub read_series_from_influxdb (\%$$) {
 	if ($res->is_success) {
 		my $json = decode_json $res->decoded_content;
 		my $series = $json->{'results'}->[0]->{'series'}->[0]->{'values'};
-		my @series;
+		my %series;
 		foreach my $i ( @$series ){
 			my $s = $i->[0];
 			my ($m, %tags) = series2measurementandtags $s;
@@ -206,9 +209,9 @@ sub read_series_from_influxdb (\%$$) {
 				delete $tags{$hiddentag};
 			}
 			$s = measurementandtags2series $m, %tags;
-			push @series, $s;
+			$series{$s} = 1;
 		}
-		return @series;
+		return sort keys %series;
 	}
 	else {
 		printf "query: %s\n", $q;
@@ -270,20 +273,59 @@ sub expand_matches ($\@) {
 	return $text;
 }
 
-sub expand_params ($\%) {
-	my ($text, $params) = @_;
-	$text =~ s{
-		\%(\w+)\%
-	}{
-		$params->{$1};
-	}egx;
+sub tmplfunc_match {
+	my ($text, $re) = @_;
+	if( $text =~ m"$re" ){ return 1; }
+	else                 { return undef; }
+}
+
+sub tmplfunc_sub {
+	my ($text, $re, $replace) = @_;
+	$text =~ s/$re/$replace/;
 	return $text;
 }
+
+sub tmplfunc_gsub {
+	my ($text, $re, $replace) = @_;
+	$text =~ s/$re/$replace/g;
+	return $text;
+}
+
+sub tmplfunc_split {
+	my ($text, $re) = @_;
+	return split m"$re", $text;
+}
+
+sub expand_params ($\%) {
+	my ($text, $params) = @_;
+
+	my $tt = Template->new({}) or do {
+		debuglog '    cannot generate Template instance: ' . $Template::ERROR;
+		return $text;
+	};
+        my $vars = {
+		match	=> \&tmplfunc_match,
+		sub	=> \&tmplfunc_sub,
+		gsub	=> \&tmplfunc_gsub,
+		split	=> \&tmplfunc_split,
+		%$params
+        };
+
+	my $output;
+        $tt->process( \$text, $vars, \$output ) or do {
+		debuglog '    cannot process template: ' . $tt->error();
+		return $text;
+	};
+	return $output;
+}
+
+####
 
 sub generate_graph_sources (\@\@\@) {
 	my ($rules, $series, $fieldkeys) = @_;
 	my %srcs;
 	my $autoid = 'id0000';
+	my $serialid = 's0000';
 	foreach my $s ( @$series ){
 		my ($measurement, %tags) = series2measurementandtags $s;
 		##
@@ -346,6 +388,7 @@ sub generate_graph_sources (\@\@\@) {
 					'keys' => []
 				};
 			}
+			$serialid++;
 			$srcs{$graphid}->{'template'} = $template;
 			push @{$srcs{$graphid}->{'keys'}}, "$s $fieldkey";
 			$srcs{$graphid}->{'params'}->{'fieldkey'} = $fieldkey;
@@ -355,7 +398,8 @@ sub generate_graph_sources (\@\@\@) {
 			$srcs{$graphid}->{'params'}->{'tags_text'} = $tags_text;
 			$srcs{$graphid}->{'params'}->{'tags_json'} = $tags_json;
 			$srcs{$graphid}->{'params'}->{'tags_where'} = $tags_where;
-			$srcs{$graphid}->{'params'}->{'graphid'} = $graphid;
+			$srcs{$graphid}->{'params'}->{'graphid'}  = $graphid;
+			$srcs{$graphid}->{'params'}->{'serialid'} = $serialid;
 			while( my ($k, $v) = each %params ){
 				$srcs{$graphid}->{'params'}->{$k} = $v;
 			}
@@ -416,6 +460,7 @@ sub request (\%\@$$$) {
 my %n2icfg = read_naemon2influx_cfg;
 my %conf = read_helper_conf;
 my @rules = read_helper_rules; 
+$DEBUG = $conf{DEBUG};
 
 ##
 #my $hostname = 'rosetta';
@@ -459,6 +504,7 @@ $SIG{'HUP'} = sub {
 
 while (my $c = $d->accept) {
 	my $r = $c->get_request;
+	next unless $r;
 	if($r->method eq 'GET'){
 		my $path = uri_unescape( $r->uri->path );
 		my $query = URI::Query->new( $r->uri->query );
@@ -548,7 +594,7 @@ F</etc/naemon/naemon2influx.cfg>
 
 =item F</etc/naemon/naemon2influx-grafana-helper.rules>
 
-=item F</etc/naemon/naemon2influx-grafana-helper.d/*.tmpl>
+=item F</etc/naemon/naemon2influx-grafana-helper.d/*.tt>
 
 =back
 
