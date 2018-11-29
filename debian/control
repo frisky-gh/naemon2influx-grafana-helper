@@ -8,7 +8,7 @@ Standards-Version: 10
 Package: naemon2influx-grafana-helper
 Section: net
 Architecture: all
-Depends: grafana, naemon2influx
+Depends: grafana, naemon2influx, liburi-query-perl, libhttp-daemon-perl, libwww-perl
 Description: naemon2influx-grafana-helper provides a Grafana scripted dashboard
  which visualize performance data collected by naemon2influx.
  .

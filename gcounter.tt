@@ -5,7 +5,7 @@
       "height": "250px",
       "panels": [ {
           "title": "%tags_text% - %fieldkey%",
-          "id": "gcounter0001",
+          "id": [%serial%],
 	  "datasource": "%GRAFANADATASOURCE%",
           "isNew": true,
           "editable": true,

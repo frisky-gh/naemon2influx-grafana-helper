@@ -9,7 +9,7 @@
     "height": "250px",
     "panels": [ {
 	"title": "[%target%] volume in [%targetname%]",
-	"id": "[%serialid%]-gvolume0001",
+	"id": [%serial%],
 	"datasource": "[%GRAFANADATASOURCE%]",
 	"isNew": true,
 	"editable": true,
@@ -25,7 +25,7 @@
 	    "show": true,
 	    "values": true, "avg": true, "max": true, "min": true, "current": false, "total": false,
 	    "rightSide": true, "alignAsTable": true, "sideWidth": 300,
-	    "hideEmpty": true, "hideZero": false,
+	    "hideEmpty": true, "hideZero": false
 	},
 	"targets": [ {
 	    "refId": "0001",

@@ -9,7 +9,7 @@
     "height": "250px",
     "panels": [ {
 	"title": "CPU Activity in [%targetname%]",
-        "id": "[%serialid%]-cpu0001",
+        "id": [%serial%],
 	"datasource": "[%GRAFANADATASOURCE%]",
         "isNew": true,
         "editable": true,

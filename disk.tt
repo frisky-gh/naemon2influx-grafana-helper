@@ -10,7 +10,7 @@
     "panels": [
 	{
 	    "title": "Disk volume of [%targetname%]:[%target%]",
-	    "id": "[%serialid%]-disk0001",
+	    "id": [%serial%],
 	    "datasource": "[%GRAFANADATASOURCE%]",
 	    "isNew": true,
 	    "editable": true,
@@ -57,7 +57,7 @@
 	},
 	{
 	    "title": "Disk available % of [%targetname%]:[%target%]",
-	    "id": "[%serialid%]-disk0002",
+	    "id": [%serial%],
 	    "datasource": "[%GRAFANADATASOURCE%]",
 	    "isNew": true,
 	    "editable": true,
@@ -117,7 +117,7 @@
     "panels": [
 	{
 	    "title": "Disk [%target%] i-node in [%targetname%]",
-	    "id": "[%serialid%]-disk0003",
+	    "id": [%serial%],
 	    "datasource": "[%GRAFANADATASOURCE%]",
 	    "isNew": true,
 	    "editable": true,
@@ -164,7 +164,7 @@
 	},
 	{
 	    "title": "Disk [%target%] i-node available in [%targetname%]",
-	    "id": "[%serialid%]-disk0004",
+	    "id": [%serial%],
 	    "datasource": "[%GRAFANADATASOURCE%]",
 	    "isNew": true,
 	    "editable": true,

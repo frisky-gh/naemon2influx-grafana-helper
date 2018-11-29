@@ -54,6 +54,7 @@ sub read_naemon2influx_cfg () {
 
 	open my $h, '<', $filename or do {
 		die "cannot open $filename: $OS_ERROR, stopped";
+		last;
 	};
 	while (<$h>) {
 		next if m"^\s*#";			# skip commented lines
@@ -69,7 +70,7 @@ sub read_naemon2influx_cfg () {
 	close $h or do {
 		die "close failed for $filename: $OS_ERROR, stopped";
 	};
-	return %config;
+	return \%config;
 }
 
 sub read_helper_conf () {
@@ -79,6 +80,9 @@ sub read_helper_conf () {
 		'LISTENPORT' => 46849,
 		'HELPERURL' => 'http://localhost:46849/',
 		'GRAFANADATASOURCE' => 'influxdb',
+		'GRAFANAURL'        => 'http://localhost/',
+		'GRAFANAAPIKEY'     => 'AAAAAA',
+		'GRAFANAORGID'      => 'undef',
 		'DEBUG' => 0,
 	);
 
@@ -93,7 +97,7 @@ sub read_helper_conf () {
 	close $h or do {
 		die "close failed for $filename: $OS_ERROR, stopped";
 	};
-	return %conf;
+	return \%conf;
 }
 
 sub read_helper_rules () {
@@ -116,7 +120,7 @@ sub read_helper_rules () {
 	close $h or do {
 		die "close failed for $filename: $OS_ERROR, stopped";
 	};
-	return @rules;
+	return \@rules;
 }
 
 sub read_template ($) {
@@ -147,7 +151,132 @@ sub write_js ($$) {
 	return;
 }
 
-sub service2measurement (\%$) {
+sub read_urlmap () {
+	my %map;
+	my $filename = "$CACHEDIR/naemon2influx-grafana-helper.urlmap";
+	open my $h, '<', "$filename" or do {
+		#die "cannot open $filename: $OS_ERROR, stopped";
+		return ();
+	};
+	while( <$h> ){
+		chomp;
+		m"^([^,]+),([^,]+),([^,]+),(\d+),([^,]+)$" or do {
+			print STGERR "ERROR: $filename:$.: Illegal format.\n";
+			next;
+		};
+		$map{"$1,$2"} = "$3,$4,$5";
+	}
+	close $h or do {
+		die "close failed for $filename: $OS_ERROR, stopped";
+	};
+	return %map;
+}
+
+sub search_urlmap ($$) {
+	my ($host, $service) = @_;
+
+	my $filename = "$CACHEDIR/naemon2influx-grafana-helper.urlmap";
+	open my $h, '<', "$filename" or do {
+		#die "cannot open $filename: $OS_ERROR, stopped";
+		return undef, undef, undef;
+	};
+	my $url;
+	my $id,
+	my $panel_ids;
+	while( <$h> ){
+		chomp;
+		m"^([^,]+),([^,]+),([^,]+),(\d+),([^,]+)$" or do {
+			print STDERR "ERROR: $filename:$.: Illegal format.\n";
+			next;
+		};
+		next unless "$host,$service" eq "$1,$2";
+		$url = $3;
+		$id = $4;
+		$panel_ids = $5;
+		last;
+	}
+	close $h or do {
+		die "close failed for $filename: $OS_ERROR, stopped";
+	};
+	return $url, $id, $panel_ids;
+}
+
+sub write_urlmap (\%) {
+	my ($map) = @_;
+	my $filename = "$CACHEDIR/naemon2influx-grafana-helper.urlmap";
+	open my $h, '>', "$filename" or do {
+		die "cannot open $filename: $OS_ERROR, stopped";
+	};
+	foreach my $k ( keys %$map ){
+		print $h $k, ",", $map->{$k}, "\n";
+	}
+	close $h or do {
+		die "close failed for $filename: $OS_ERROR, stopped";
+	};
+	return;
+}
+
+sub cmp_urlmap (\%\%) {
+	my ($left, $right) = @_;
+	my %c;
+	while( my ($k, $v) = each %$left ) { $c{"$k,$v"} |= 1; }
+	while( my ($k, $v) = each %$right ){ $c{"$k,$v"} |= 2; }
+	my @r;
+	while( my ($i, $r) = each %c ){
+		next if $r == 3;
+		push @r, $i;
+	}
+	return @r;
+}
+
+sub read_all_series_cache () {
+	my %cache;
+	my $filename = "$CACHEDIR/naemon2influx-grafana-helper.all_series";
+	open my $h, '<', "$filename" or do {
+		#die "cannot open $filename: $OS_ERROR, stopped";
+		return ();
+	};
+	while( <$h> ){
+		chomp;
+		$cache{$_} = 1;
+	}
+	close $h or do {
+		die "close failed for $filename: $OS_ERROR, stopped";
+	};
+	return sort keys %cache;
+}
+
+sub write_all_series_cache (\@) {
+	my ($cache) = @_;
+	my $filename = "$CACHEDIR/naemon2influx-grafana-helper.all_series";
+	open my $h, '>', "$filename" or do {
+		die "cannot open $filename: $OS_ERROR, stopped";
+	};
+	foreach my $i ( @$cache ){
+		print $h $i, "\n";
+	}
+	close $h or do {
+		die "close failed for $filename: $OS_ERROR, stopped";
+	};
+	return;
+}
+
+sub cmp_all_series (\@\@) {
+	my ($left, $right) = @_;
+	my %c;
+	foreach my $i ( @$left ) { $c{$i} |= 1; }
+	foreach my $i ( @$right ){ $c{$i} |= 2; }
+	my %d;
+	while( my ($i, $r) = each %c ){
+		next if $r == 3;
+		my ($m, %tags) = series2measurementandtags ($i);
+		my $j = $tags{hostname} . ',' . $m;
+		$d{$j} = 1;
+	}
+	return sort keys %d;
+}
+
+sub service2measurement ($$) {
 	my ($config, $service ) = @_;
 	my $global_prefix = $config->{'global_prefix'};
 	my $measurement = $global_prefix eq '' ? $service : "$global_prefix.$service";
@@ -179,7 +308,7 @@ sub measurementandtags2series ($%) {
 	return $series;
 }
 
-sub query_to_influxdb (\%$) {
+sub query_to_influxdb ($$) {
 	my ($config, $q ) = @_;
 	my $ua = LWP::UserAgent->new;
 	my $server_endpoint = sprintf '%s/query?db=%s&u=%s&p=%s&q=%s',
@@ -193,35 +322,115 @@ sub query_to_influxdb (\%$) {
 	return $res;
 }
 
-sub read_series_from_influxdb (\%$$) {
+sub register_dashboard_to_grafana ($$$) {
+	my ($config, $name, $json) = @_;
+	my $dashboardjson = << "	ENDOFJSON";
+	{
+	  "overwrite" : true,
+	  "dashboard" : {
+	    "id": null,
+	    "title": "$name",
+	    "tags": [],
+	    "timezone": "browser",
+	    "editable": true,
+	    "hideControls": false,
+	    "sharedCrosshair": false,
+	    "rows": $json,
+	    "time": { "from": "now-1h", "to": "now" },
+	    "timepicker": {
+	      "refresh_intervals": [ "5m" ],
+	      "time_options"     : [ "1h", "1d", "7d", "30d", "1y" ]
+	    },
+	    "templating":  { "list": [] },
+	    "annotations": { "list": [] },
+	    "schemaVersion": 8,
+	    "version": 4,
+	    "links": []
+	  }
+	}
+	ENDOFJSON
+
+	my $ua = LWP::UserAgent->new;
+	my $url = $config->{GRAFANAURL} . "/api/dashboards/db";
+	my $header = [
+        	'Authorization' => 'Bearer ' . $config->{GRAFANAAPIKEY},
+		'Content-Type'  => 'application/json',
+	];
+	my $req = HTTP::Request->new('POST', $url, $header, $dashboardjson);
+	debuglog "grafana-req %s", $url;
+	my $res = $ua->request($req);
+	debuglog "grafana-res code=%s", $res->code;
+	if( $res->code != 200 ){
+		return undef;
+	}
+	my $r = decode_json $res->content;
+	debuglog "grafana-res status=%s", $r->{status};
+	if( $r->{status} ne "success" ){
+		return undef;
+	}
+	return $r;
+}
+
+sub read_all_series_from_influxdb ($) {
+	my ($n2iconf) = @_;
+	my $q = "show series";
+	my $res = query_to_influxdb $n2iconf, $q;
+	unless ($res->is_success) {
+		printf "query: %s\n", $q;
+		printf "code: %s\nmessage: %s\n", $res->code, $res->message;
+		return ();
+	}
+
+	my $json = decode_json $res->decoded_content;
+	my $series = $json->{'results'}->[0]->{'series'}->[0]->{'values'};
+	my %series;
+	my $global_prefix = $n2iconf->{global_prefix} . ".";
+	my $global_prefix_length = length $global_prefix;
+	foreach my $i ( @$series ){
+		my $s = $i->[0];
+		my ($m, %tags) = series2measurementandtags $s;
+		if( $global_prefix ){
+			next unless substr($m, 0, $global_prefix_length) eq $global_prefix;
+			$m = substr($m, $global_prefix_length);
+		}
+		foreach my $hiddentag ( 'state' ){
+			delete $tags{$hiddentag};
+		}
+		$s = measurementandtags2series $m, %tags;
+		$series{$s} = 1;
+	}
+	return sort keys %series;
+}
+
+sub read_series_from_influxdb ($$$) {
 	my ($config, $measurement, $hostname ) = @_;
 	my $q = "show series from \"$measurement\"";
-	my $res = query_to_influxdb %$config, $q;
-	if ($res->is_success) {
-		my $json = decode_json $res->decoded_content;
-		my $series = $json->{'results'}->[0]->{'series'}->[0]->{'values'};
-		my %series;
-		foreach my $i ( @$series ){
-			my $s = $i->[0];
-			my ($m, %tags) = series2measurementandtags $s;
-			next unless $tags{'hostname'} eq $hostname;
-			foreach my $hiddentag ( 'state' ){
-				delete $tags{$hiddentag};
-			}
-			$s = measurementandtags2series $m, %tags;
-			$series{$s} = 1;
-		}
-		return sort keys %series;
-	}
-	else {
+	my $res = query_to_influxdb $config, $q;
+	unless ($res->is_success) {
 		printf "query: %s\n", $q;
 		printf "code: %s\nmessage: %s\n", $res->code, $res->message;
 	}
+
+	my $json = decode_json $res->decoded_content;
+	my $series = $json->{'results'}->[0]->{'series'}->[0]->{'values'};
+	my %series;
+	foreach my $i ( @$series ){
+		my $s = $i->[0];
+		my ($m, %tags) = series2measurementandtags $s;
+		next unless $tags{'hostname'} eq $hostname;
+		foreach my $hiddentag ( 'state' ){
+			delete $tags{$hiddentag};
+		}
+		$s = measurementandtags2series $m, %tags;
+		$series{$s} = 1;
+	}
+	return sort keys %series;
 }
-sub read_fieldkeys_from_influxdb (\%$) {
+
+sub read_fieldkeys_from_influxdb ($$) {
 	my ($config, $measurement ) = @_;
 	my $q = "show field keys from \"$measurement\"";
-	my $res = query_to_influxdb %$config, $q;
+	my $res = query_to_influxdb $config, $q;
 	if ($res->is_success) {
 		my $json = decode_json $res->decoded_content;
 		my $series = $json->{'results'}->[0]->{'series'}->[0]->{'values'};
@@ -238,7 +447,7 @@ sub read_fieldkeys_from_influxdb (\%$) {
 	}
 }
 
-sub read_fieldlastvalues_from_influxdb (\%$) {
+sub read_fieldlastvalues_from_influxdb ($$) {
 #	my ($config, $service ) = @_;
 #	my $measurement = service2measurement %$config, $service;
 #	my $q = "show field keys from \"$measurement\"";
@@ -296,7 +505,12 @@ sub tmplfunc_split {
 	return split m"$re", $text;
 }
 
-sub expand_params ($\%) {
+our $SERIAL = 1;
+sub tmplfunc_serial {
+	return $SERIAL++;
+}
+
+sub expand_params ($$) {
 	my ($text, $params) = @_;
 
 	my $tt = Template->new({}) or do {
@@ -308,6 +522,7 @@ sub expand_params ($\%) {
 		sub	=> \&tmplfunc_sub,
 		gsub	=> \&tmplfunc_gsub,
 		split	=> \&tmplfunc_split,
+		serial	=> \&tmplfunc_serial,
 		%$params
         };
 
@@ -321,11 +536,10 @@ sub expand_params ($\%) {
 
 ####
 
-sub generate_graph_sources (\@\@\@) {
+sub generate_panelsseed (\@\@\@) {
 	my ($rules, $series, $fieldkeys) = @_;
 	my %srcs;
 	my $autoid = 'id0000';
-	my $serialid = 's0000';
 	foreach my $s ( @$series ){
 		my ($measurement, %tags) = series2measurementandtags $s;
 		##
@@ -388,7 +602,6 @@ sub generate_graph_sources (\@\@\@) {
 					'keys' => []
 				};
 			}
-			$serialid++;
 			$srcs{$graphid}->{'template'} = $template;
 			push @{$srcs{$graphid}->{'keys'}}, "$s $fieldkey";
 			$srcs{$graphid}->{'params'}->{'fieldkey'} = $fieldkey;
@@ -399,7 +612,6 @@ sub generate_graph_sources (\@\@\@) {
 			$srcs{$graphid}->{'params'}->{'tags_json'} = $tags_json;
 			$srcs{$graphid}->{'params'}->{'tags_where'} = $tags_where;
 			$srcs{$graphid}->{'params'}->{'graphid'}  = $graphid;
-			$srcs{$graphid}->{'params'}->{'serialid'} = $serialid;
 			while( my ($k, $v) = each %params ){
 				$srcs{$graphid}->{'params'}->{$k} = $v;
 			}
@@ -408,9 +620,27 @@ sub generate_graph_sources (\@\@\@) {
 	return %srcs;
 }
 
-sub build_graphs (\%\%) {
+sub debuglog_panelsseed (%) {
+	my (%seed) = @_;
+	my @graphids = sort keys %seed;
+	#debuglog '	fieldkeys: %s', join(' ', @keys);
+	#debuglog '	series   : %s', join(' ', @series);
+	debuglog '	graphids : %s', join(' ', @graphids);
+
+	foreach my $graphid ( @graphids ){
+		my $template = $seed{$graphid}->{template};
+		next if $template eq 'IGNORE';
+		debuglog "graphid=%s template=%s", $graphid, $template;
+		foreach my $i ( @{$seed{$graphid}->{keys}} ){
+			debuglog "	%s", $i;
+		}
+	}
+
+}
+
+sub panelsseed2panelsjson (\%\%) {
 	my ($srcs, $additional_params) = @_;
-	my @contents;
+	my @jsons;
 	foreach my $id ( sort keys %$srcs ){
 		my $template = $srcs->{$id}->{'template'};
 		next if $template eq 'IGNORE';
@@ -419,135 +649,194 @@ sub build_graphs (\%\%) {
 			$params{$k} = $v;
 		}
 		my $template_text = read_template $template;
-		my $text = expand_params $template_text, %params;
-		push @contents, $text;
+		my $text = expand_params $template_text, \%params;
+		push @jsons, $text;
 	}
-	return @contents;
+	my $json = "[" . join(',', @jsons) . "]\n";
+	return $json;
 }
 
-sub request (\%\@$$$) {
-	my ($config, $rules, $hostname, $servicedesc, $grafanadatasource) = @_;
-	my $measurement = service2measurement %$config, $servicedesc;
+sub generate_panelsjson ($$$$$) {
+	my ($n2iconf, $rules, $hostname, $servicedesc, $grafanadatasource) = @_;
+	my $measurement = service2measurement $n2iconf, $servicedesc;
 	my %additional_params = (
 		'hostname' => $hostname,
 		'servicedesc' => $servicedesc,
 		'measurement' => $measurement,
 		'GRAFANADATASOURCE' => $grafanadatasource,
 	);
-	my @keys = read_fieldkeys_from_influxdb %$config, $measurement; 
-	my @series = read_series_from_influxdb %$config, $measurement, $hostname; 
-	my %srcs = generate_graph_sources @$rules, @series, @keys;
-	my @graphids = sort keys %srcs;
-	debuglog '	fieldkeys: %s', join(' ', @keys);
-	debuglog '	series   : %s', join(' ', @series);
-	debuglog '	graphids : %s', join(' ', @graphids);
+	my @keys = read_fieldkeys_from_influxdb $n2iconf, $measurement; 
+	my @series = read_series_from_influxdb $n2iconf, $measurement, $hostname; 
+	my %seed = generate_panelsseed @$rules, @series, @keys;
+	debuglog_panelsseed %seed;
+	my $json = panelsseed2panelsjson %seed, %additional_params;
+	return $json;
+}
 
-	foreach my $graphid ( @graphids ){
-		my $template = $srcs{$graphid}->{'template'};
-		next if $template eq 'IGNORE';
-		debuglog "graphid=%s template=%s", $graphid, $template;
-		foreach my $i ( @{$srcs{$graphid}->{'keys'}} ){
-			debuglog "	%s", $i;
+sub validate_panelsjson ($) {
+	my ($original_json) = @_;
+	my $rows;
+	eval { $rows = decode_json $original_json; };
+	if( $@ ){
+		debuglog "$@";
+		debuglog "decoding json: $original_json";
+		die "cannot validate panels json, stopped";
+	}
+	my $valid_json = encode_json $rows;
+	my @panel_ids;
+	foreach my $row ( @$rows ){
+		my $panels = $row->{panels};
+		unless( $panels ){
+			die "json has no panel, stopped";
+		}
+		foreach my $panel ( @$panels ){
+			next unless $panel->{id};
+			push @panel_ids, $panel->{id};
 		}
 	}
-
-	my @rows = build_graphs %srcs, %additional_params;
-	my $rows = "[" . join(',', @rows) . "]\n";
-	return $rows;
+	return $valid_json, @panel_ids;
 }
 
 ####
-my %n2icfg = read_naemon2influx_cfg;
-my %conf = read_helper_conf;
-my @rules = read_helper_rules; 
-$DEBUG = $conf{DEBUG};
-
-##
-#my $hostname = 'rosetta';
-#my $measurement = service2measurement %n2icfg, 'Disk';
-#my @keys = read_fieldkeys_from_influxdb %n2icfg, $measurement; 
-#my @series = read_series_from_influxdb %n2icfg, $measurement, $hostname;
-#my %srcs = generate_graph_sources @rules, @series, @keys;
-#foreach my $graphid ( sort keys %srcs ){
-#	my $template = $srcs{$graphid}->{'template'};
-#	next if $template eq 'IGNORE';
-#	print "DEBUG: graphid=$graphid template=$template\n";
-#	foreach my $i ( @{$srcs{$graphid}->{'keys'}} ){
-#		print "	$i\n";
-#	}
-#}
-#print "DEBUG2: @keys\n";
-#print "DEBUG2: @series\n";
-#exit 0;
-##
-
-$0 = $NAME;
-my $dashboard_tmpl = read_template "naemon2influx-grafana-helper";
-my $dashboard_js = expand_params $dashboard_tmpl, %conf;
-write_js "naemon2influx-grafana-helper", $dashboard_js;
-my $d = HTTP::Daemon->new(
-	'Reuse' => 1,
-	'LocalAddr' => $conf{'LISTENADDR'},
-	'LocalPort' => $conf{'LISTENPORT'}
-) or do {
-	die sprintf 'cannot listen %s:%d: %s, stopped', $conf{'LISTENADDR'}, $conf{'LISTENPORT'}, $OS_ERROR;
-};
-my $grafanadatasource = $conf{'GRAFANADATASOURCE'};
-
-$SIG{'TERM'} = sub {
-	$d->shutdown;
-};
-$SIG{'HUP'} = sub {
-	if( open $LOGFH, '>>', $LOGFILE ){ $LOGFH->autoflush; }
-	else{ $LOGFH = *STDERR; }
-};
-
-while (my $c = $d->accept) {
-	my $r = $c->get_request;
-	next unless $r;
-	if($r->method eq 'GET'){
-		my $path = uri_unescape( $r->uri->path );
-		my $query = URI::Query->new( $r->uri->query );
-		my %query = $query->hash;
-		unless( $path =~ m"^/rows.js$") {
-			$c->send_error(RC_FORBIDDEN);
-			next;
+sub cmd_cron ($$$) {
+	my ($conf, $n2iconf, $rules) = @_;
+	my $grafanadatasource = $conf->{'GRAFANADATASOURCE'};
+	my @last_series = read_all_series_cache; 
+	my @curr_series = read_all_series_from_influxdb $n2iconf; 
+	my %last_map = read_urlmap; 
+	my %curr_map = %last_map;
+	my @series_diff = cmp_all_series @curr_series, @last_series;
+	if( @series_diff ){
+		foreach my $diff ( @series_diff ){
+			my ($host, $service) = split m",", $diff;
+			my ($json, @panel_ids) = validate_panelsjson
+				generate_panelsjson $n2iconf, $rules, $host, $service, $grafanadatasource;
+			my $r = register_dashboard_to_grafana $conf, "$host, $service", $json;
+			$curr_map{"$host,$service"} = sprintf "%s/%s,%d,%s",
+				$r->{uid}, $r->{slug}, $r->{id}, "@panel_ids";
 		}
-		my $callback = $query{'callback'};
-		$callback = 'callback_from_helper' unless defined $callback;
-		my $hostname = $query{'hostname'};
-		my $servicedesc = $query{'servicedesc'};
-		unless( $callback =~ m"^\w{1,80}$") {
-			$c->send_error(RC_FORBIDDEN);
-			next;
-		}
-		unless( $hostname =~ m"^\S{1,80}$" && $hostname !~ m"[=,;]" ) {
-			$c->send_error(RC_FORBIDDEN);
-			next;
-		}
-		unless( $servicedesc =~ m"^\S{1,80}$" && $servicedesc !~ m"[=,;]" ) {
-			$c->send_error(RC_FORBIDDEN);
-			next;
-		}
-		accesslog 'req: path=%s query=%s', $path, $query;
-
-		my $content = request %n2icfg, @rules, $hostname, $servicedesc, $grafanadatasource;
-
-		my $res = HTTP::Response->new;
-		$res->code(200);
-		$res->header('Content-Type' => 'text/javascript');
-		$res->content("$callback($content);");
-		$c->send_response($res);
-	}else{
-		$c->send_error(RC_FORBIDDEN);
-		next;
+		write_all_series_cache @curr_series;
 	}
-	$c->close;
-	undef($c);
+	my @map_diff = cmp_urlmap %curr_map, %last_map;
+	if( @map_diff ){
+		write_urlmap %curr_map;
+	}
 }
 
-exit 0;
+sub action_rows ($$$$$) {
+	my ($conf, $n2iconf, $rules, $conn, $req) = @_;
+	my $grafanadatasource = $conf->{'GRAFANADATASOURCE'};
+	my $query = URI::Query->new( $conn->get_request->uri->query );
+	my %query = $query->hash;
 
+	my $callback    = $query{'callback'} // 'callback_from_helper';
+	my $hostname    = $query{'hostname'};
+	my $servicedesc = $query{'servicedesc'};
+	unless( $callback =~ m"^\w{1,80}$") {
+		$conn->send_error(RC_FORBIDDEN);
+		return;
+	}
+	unless( $hostname =~ m"^\S{1,80}$" && $hostname !~ m"[=,;]" ) {
+		$conn->send_error(RC_FORBIDDEN);
+		return;
+	}
+	unless( $servicedesc =~ m"^\S{1,80}$" && $servicedesc !~ m"[=,;]" ) {
+		$conn->send_error(RC_FORBIDDEN);
+		return;
+	}
+
+	my $json = generate_panelsjson
+		$n2iconf, $rules, $hostname, $servicedesc, $grafanadatasource;
+
+	my $res = HTTP::Response->new;
+	$res->code(200);
+	$res->header('Content-Type' => 'text/javascript');
+	$res->content("$callback($json);");
+	$conn->send_response($res);
+}
+
+sub action_redirect ($$$$$) {
+	my ($conf, $n2iconf, $rules, $conn, $req) = @_;
+	my $query = URI::Query->new( $req->uri->query );
+	my %query = $query->hash;
+
+	my ($path, $id, $panel_ids) = search_urlmap $query{hostname}, $query{servicedesc};
+	unless( defined $path ){
+		$conn->send_error(RC_FORBIDDEN);
+		return;
+	}
+	my $url = $conf->{GRAFANAURL};
+	$url =~ s{/$}{};
+	$url .= "/d/$path";
+	$url .= "?orgId=" $conf->{GRAFANAORGID} if $conf->{GRAFANAORGID};
+	accesslog "redirect: host=%s, service=%s -> url=%s",
+		$query{hostname}, $query{servicedesc}, $url;
+	my $res = HTTP::Response->new;
+	$res->code(307);
+	$res->header('Location' => $url);
+	$conn->send_response($res);
+}
+
+sub cmd_daemon ($$$) {
+	my ($conf, $n2iconf, $rules) = @_;
+
+	$0 = $NAME;
+	my $dashboard_tmpl = read_template "naemon2influx-grafana-helper";
+	my $dashboard_js = expand_params $dashboard_tmpl, $conf;
+	write_js "naemon2influx-grafana-helper", $dashboard_js;
+	my $d = HTTP::Daemon->new(
+		'Reuse' => 1,
+		'LocalAddr' => $conf->{'LISTENADDR'},
+		'LocalPort' => $conf->{'LISTENPORT'}
+	) or do {
+		die sprintf 'cannot listen %s:%d: %s, stopped', $conf->{'LISTENADDR'}, $conf->{'LISTENPORT'}, $OS_ERROR;
+	};
+
+	$SIG{'TERM'} = sub {
+		$d->shutdown;
+	};
+	$SIG{'HUP'} = sub {
+		if( open $LOGFH, '>>', $LOGFILE ){ $LOGFH->autoflush; }
+		else{ $LOGFH = *STDERR; }
+	};
+
+	while (my $conn = $d->accept) {
+		my $req = $conn->get_request;
+		next unless $req;
+		my $method = $req->method;
+		my $path = uri_unescape $req->uri->path;
+		accesslog 'req: method=%s path=%s', $method, $path;
+		if    ($method eq 'GET' && $path eq "/rows.js" ){
+			action_rows     $conf, $n2iconf, $rules, $conn, $req;
+		}elsif($method eq 'GET' && $path eq "/redirect.html" ){
+			action_redirect $conf, $n2iconf, $rules, $conn, $req;
+		}else{
+			$conn->send_error(RC_FORBIDDEN);
+		}
+		$conn->close;
+		undef $conn;
+	}
+}
+
+####
+my $conf    = read_helper_conf;
+my $rules   = read_helper_rules; 
+my $n2iconf = read_naemon2influx_cfg;
+$DEBUG = $conf->{DEBUG};
+
+####
+if    ( $ARGV[0] eq "daemon" ){
+	cmd_daemon $conf, $n2iconf, $rules;
+	exit 0;
+}elsif( $ARGV[0] eq "cron" ){
+	cmd_cron $conf, $n2iconf, $rules;
+	exit 0;
+}else{
+	print "usage: % $0 {daemon|cron}\n";
+	exit 0;
+}
+
+####
 =pod
 
 =encoding utf8

@@ -5,7 +5,7 @@ UPSTREAM_PACKAGE=naemon2influx-grafana-helper_$(VERSION).orig.tar.gz
 DESTDIR=	
 
 TEMPLATEDIR=	/etc/naemon/naemon2influx-grafana-helper.d
-TEMPLATES=	generic.tmpl gcounter.tmpl gpercent.tmpl gvolume.tmpl cpu.tmpl mem.tmpl disk.tmpl naemon2influx-grafana-helper.tmpl
+TEMPLATES=	generic.tt gcounter.tt gpercent.tt gvolume.tt cpu.tt mem.tt disk.tt naemon2influx-grafana-helper.tt
 
 all:	build
 

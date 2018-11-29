@@ -8,7 +8,7 @@
 
 ### BEGIN INIT INFO
 # Provides: naemon2influx-grafana-helper
-# Required-Start: $network $local_fs $remote_fs grafana
+# Required-Start: $network $local_fs $remote_fs
 # Required-Stop: $network $local_fs $remote_fs
 # Should-Start: $syslog $named
 # Should-Stop: $syslog $named
@@ -35,7 +35,7 @@ case "$1" in
 	log_daemon_msg "Starting $NAME" || true
 	if start-stop-daemon --status --quiet --oknodo --pidfile $PIDFILE -u naemon ; then
 		log_end_msg 0 || true
-	elif start-stop-daemon --start --quiet --oknodo -m --pidfile $PIDFILE -c naemon -b --exec $DAEMON -- ; then
+	elif start-stop-daemon --start --quiet --oknodo -m --pidfile $PIDFILE -c naemon -b --exec $DAEMON -- daemon ; then
 		log_end_msg 0 || true
 	else
 		log_end_msg 1 || true
@@ -61,7 +61,7 @@ case "$1" in
 	log_daemon_msg "Restarting $NAME" || true
 	start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILE
 	sleep 1
-	if start-stop-daemon --start --quiet --oknodo -m --pidfile $PIDFILE -c naemon -b --exec $DAEMON -- ; then
+	if start-stop-daemon --start --quiet --oknodo -m --pidfile $PIDFILE -c naemon -b --exec $DAEMON -- daemon ; then
 		log_end_msg 0 || true
 	else
 		log_end_msg 1 || true
