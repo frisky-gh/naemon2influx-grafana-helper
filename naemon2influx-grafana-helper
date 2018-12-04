@@ -322,15 +322,18 @@ sub query_to_influxdb ($$) {
 	return $res;
 }
 
-sub register_dashboard_to_grafana ($$$) {
-	my ($config, $name, $json) = @_;
+sub register_dashboard_to_grafana ($$$;$) {
+	my ($config, $name, $json, $tags) = @_;
+	my @tags_text;
+	foreach( @$tags ){ push @tags_text, "\"$_\""; }
+	my $tags_text = join ",", @tags_text;
 	my $dashboardjson = << "	ENDOFJSON";
 	{
 	  "overwrite" : true,
 	  "dashboard" : {
 	    "id": null,
 	    "title": "$name",
-	    "tags": [],
+	    "tags": [$tags_text],
 	    "timezone": "browser",
 	    "editable": true,
 	    "hideControls": false,
@@ -711,7 +714,8 @@ sub cmd_cron ($$$) {
 			my ($host, $service) = split m",", $diff;
 			my ($json, @panel_ids) = validate_panelsjson
 				generate_panelsjson $n2iconf, $rules, $host, $service, $grafanadatasource;
-			my $r = register_dashboard_to_grafana $conf, "$host, $service", $json;
+			my @tags = ($host, $service);
+			my $r = register_dashboard_to_grafana $conf, "$host, $service", $json, \@tags;
 			$curr_map{"$host,$service"} = sprintf "%s/%s,%d,%s",
 				$r->{uid}, $r->{slug}, $r->{id}, "@panel_ids";
 		}
@@ -768,12 +772,36 @@ sub action_redirect ($$$$$) {
 	my $url = $conf->{GRAFANAURL};
 	$url =~ s{/$}{};
 	$url .= "/d/$path";
-	$url .= "?orgId=" $conf->{GRAFANAORGID} if $conf->{GRAFANAORGID};
+	$url .= "?orgId=" . $conf->{GRAFANAORGID} if $conf->{GRAFANAORGID};
 	accesslog "redirect: host=%s, service=%s -> url=%s",
 		$query{hostname}, $query{servicedesc}, $url;
 	my $res = HTTP::Response->new;
 	$res->code(307);
 	$res->header('Location' => $url);
+	$conn->send_response($res);
+}
+
+sub action_panels ($$$$$) {
+	my ($conf, $n2iconf, $rules, $conn, $req) = @_;
+	my $query = URI::Query->new( $req->uri->query );
+	my %query = $query->hash;
+
+	my ($path, $id, $panel_ids) = search_urlmap $query{hostname}, $query{servicedesc};
+	unless( defined $path ){
+		$conn->send_error(RC_FORBIDDEN);
+		return;
+	}
+
+	my @ids = split m"\s+", $panel_ids;
+	my $obj = {
+		"id" => [ @ids ],
+	};
+	my $json = encode_json $obj;
+
+	my $res = HTTP::Response->new;
+	$res->code(200);
+	$res->header('Content-Type' => 'text/javascript');
+	$res->content($json);
 	$conn->send_response($res);
 }
 
@@ -808,6 +836,8 @@ sub cmd_daemon ($$$) {
 		accesslog 'req: method=%s path=%s', $method, $path;
 		if    ($method eq 'GET' && $path eq "/rows.js" ){
 			action_rows     $conf, $n2iconf, $rules, $conn, $req;
+		}elsif($method eq 'GET' && $path eq "/panels.js" ){
+			action_panels   $conf, $n2iconf, $rules, $conn, $req;
 		}elsif($method eq 'GET' && $path eq "/redirect.html" ){
 			action_redirect $conf, $n2iconf, $rules, $conn, $req;
 		}else{
