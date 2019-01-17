@@ -1,7 +1,4 @@
 //// Generic
-[%- targetname = sub(hostname, "/.*$", "") %]
-[%- targettype = sub(hostname, "^.*/", "") %]
-[%- detectorname = sub(servicedesc, "^.*_", "") %]
 [%- attrs = sub(series, "^[^,]+,", ",") %]
 [%- attrs = sub(attrs, ",hostname=[^,]+(,|$)", ",") %]
 [%- attrs = sub(attrs, "^,", "") %]
@@ -11,7 +8,7 @@
     "editable": true,
     "height": "250px",
     "panels": [ {
-	"title": "[%fieldkey%] [%attrs%] in [%targetname%] - [%targettype%] [%detectorname%] (Generic)",
+	"title": "[%fieldkey%] [%attrs%] in [%hostname%] - [%servicedesc%] (Generic)",
 	"id": [%serial%],
 	"datasource": "[%GRAFANADATASOURCE%]",
 	"isNew": true,

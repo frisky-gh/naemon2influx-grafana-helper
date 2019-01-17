@@ -1,14 +1,11 @@
 //// Generic Volume
-[%- targetname = sub(hostname, "/.*$", "") %]
-[%- targettype = sub(hostname, "^.*/", "") %]
-[%- detectorname = sub(servicedesc, "^.*_", "") %]
 {
     "title": "Row",
     "collapse": false,
     "editable": true,
     "height": "250px",
     "panels": [ {
-	"title": "[%target%] volume in [%targetname%]",
+	"title": "[%target%] volume in [%hostname%]",
 	"id": [%serial%],
 	"datasource": "[%GRAFANADATASOURCE%]",
 	"isNew": true,

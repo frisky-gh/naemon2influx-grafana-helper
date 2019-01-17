@@ -794,6 +794,7 @@ sub action_panels ($$$$$) {
 
 	my @ids = split m"\s+", $panel_ids;
 	my $obj = {
+		"url" => "/d/$path",
 		"id" => [ @ids ],
 	};
 	my $json = encode_json $obj;
