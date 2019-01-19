@@ -5,7 +5,7 @@
     "editable": true,
     "height": "250px",
     "panels": [ {
-	"title": "[%target%] volume in [%hostname%]",
+	"title": "Volume \"[%target%]\" Availability in [%hostname%] (Generic Volume)",
 	"id": [%serial%],
 	"datasource": "[%GRAFANADATASOURCE%]",
 	"isNew": true,

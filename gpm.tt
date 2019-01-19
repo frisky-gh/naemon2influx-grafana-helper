@@ -1,11 +1,14 @@
-//// CPU
+//// Generic Per Minutes
+[%- attrs = sub(series, "^[^,]+,", ",") %]
+[%- attrs = sub(attrs, ",hostname=[^,]+(,|$)", ",") %]
+[%- attrs = sub(attrs, "^,", "") %]
 {
     "title": "Row",
     "collapse": false,
     "editable": true,
     "height": "250px",
     "panels": [ {
-	"title": "CPU Activity in [%hostname%]",
+	"title": "[%target%]_[%unit%] [%attrs%] in [%hostname%] (Generic Per Minutes)",
 	"id": [%serial%],
 	"datasource": "[%GRAFANADATASOURCE%]",
 	"isNew": true,
@@ -15,7 +18,7 @@
 	"x-axis": true,
 	"y-axis": true,
 	"y_formats": [ "short" ],
-	"grid": { "leftLogBase": 1, "leftMax": 100, "leftMin": 0 },
+	"grid": { "leftLogBase": 1, "leftMax": null, "leftMin": null },
 	"gridPos": { "w": 6, "h": 6, "x": 0, "y": 0 },
 	"span": 6,
 	"legend": {
@@ -31,27 +34,28 @@
 	    "alias": "$col",
 	    "groupBy": [ { "type": "time", "params": [ "$__interval" ] } ],
 	    "measurement": "[%measurement%]",
-	    "tags": [ { "key": "hostname", "operator": "=", "value": "[%hostname%]" } ],
+	    "tags": [%tags%],
 	    "select": [
-		[ { "type": "field", "params": [ "cpu_system_pct" ] },
+		[ { "type": "field", "params": [ "[%target%]_[%unit%].warn_upper" ] },
 		  { "type": "mean",  "params": [] },
-		  { "type": "alias", "params": [ "system" ] } ],
-		[ { "type": "field", "params": [ "cpu_user_pct" ] },
+		  { "type": "alias", "params": [ "warn_upper" ] } ],
+		[ { "type": "field", "params": [ "[%target%]_[%unit%].warn_lower" ] },
 		  { "type": "mean",  "params": [] },
-		  { "type": "alias", "params": [ "user" ] } ],
-		[ { "type": "field", "params": [ "cpu_iowait_pct" ] },
+		  { "type": "alias", "params": [ "warn_lower" ] } ],
+		[ { "type": "field", "params": [ "[%target%]_[%unit%].crit_upper" ] },
 		  { "type": "mean",  "params": [] },
-		  { "type": "alias", "params": [ "iowait" ] } ],
-		[ { "type": "field", "params": [ "cpu_idle_pct" ] },
+		  { "type": "alias", "params": [ "crit_upper" ] } ],
+		[ { "type": "field", "params": [ "[%target%]_[%unit%].crit_lower" ] },
 		  { "type": "mean",  "params": [] },
-		  { "type": "alias", "params": [ "idle" ] } ]
+		  { "type": "alias", "params": [ "crit_lower" ] } ],
+		[ { "type": "field", "params": [ "[%target%]_[%unit%]" ] },
+		  { "type": "mean",  "params": [] },
+		  { "type": "alias", "params": [ "value" ] } ]
 	    ]
 	} ],
-	"seriesOverrides": [ { "alias": "iowait", "linewidth": 0 } ],
-	"stack": true,
 	"nullPointMode": "connected"
     }, {
-	"title": "CPU Idle in [%hostname%]",
+	"title": "[%target%]_[%unit%] [%attrs%] in [%hostname%] (Generic Per Minutes)",
 	"id": [%serial%],
 	"datasource": "[%GRAFANADATASOURCE%]",
 	"isNew": true,
@@ -61,7 +65,7 @@
 	"x-axis": true,
 	"y-axis": true,
 	"y_formats": [ "short" ],
-	"grid": { "leftLogBase": 1, "leftMax": 100, "leftMin": 0 },
+	"grid": { "leftLogBase": 1, "leftMax": null, "leftMin": null },
 	"gridPos": { "w": 6, "h": 6, "x": 6, "y": 0 },
 	"span": 6,
 	"legend": {
@@ -77,26 +81,23 @@
 	    "alias": "$col",
 	    "groupBy": [ { "type": "time", "params": [ "$__interval" ] } ],
 	    "measurement": "[%measurement%]",
-	    "tags": [ { "key": "hostname", "operator": "=", "value": "[%hostname%]" } ],
+	    "tags": [%tags%],
 	    "select": [
-		[ { "type": "field", "params": [ "cpu_idle_1h_avg_pct" ] },
+		[ { "type": "field", "params": [ "[%target%]_1h_avg_[%unit%].warn_upper" ] },
 		  { "type": "mean",  "params": [] },
-		  { "type": "alias", "params": [ "idle_1h_avg" ] } ],
-		[ { "type": "field", "params": [ "cpu_idle_1h_avg_pct.warn_lower" ] },
+		  { "type": "alias", "params": [ "warn_upper" ] } ],
+		[ { "type": "field", "params": [ "[%target%]_1h_avg_[%unit%].warn_lower" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "warn_lower" ] } ],
-		[ { "type": "field", "params": [ "cpu_idle_1h_avg_pct.crit_lower" ] },
+		[ { "type": "field", "params": [ "[%target%]_1h_avg_[%unit%].crit_upper" ] },
+		  { "type": "mean",  "params": [] },
+		  { "type": "alias", "params": [ "crit_upper" ] } ],
+		[ { "type": "field", "params": [ "[%target%]_1h_avg_[%unit%].crit_lower" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "crit_lower" ] } ],
-		[ { "type": "field", "params": [ "cpu_idle_pct" ] },
+		[ { "type": "field", "params": [ "[%target%]_1h_avg_[%unit%]" ] },
 		  { "type": "mean",  "params": [] },
-		  { "type": "alias", "params": [ "idle" ] } ],
-		[ { "type": "field", "params": [ "cpu_idle_pct" ] },
-		  { "type": "max",   "params": [] },
-		  { "type": "alias", "params": [ "idle_max" ] } ],
-		[ { "type": "field", "params": [ "cpu_idle_pct" ] },
-		  { "type": "min",   "params": [] },
-		  { "type": "alias", "params": [ "idle_min" ] } ]
+		  { "type": "alias", "params": [ "value" ] } ]
 	    ]
 	} ],
 	"nullPointMode": "connected"

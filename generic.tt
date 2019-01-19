@@ -8,7 +8,7 @@
     "editable": true,
     "height": "250px",
     "panels": [ {
-	"title": "[%fieldkey%] [%attrs%] in [%hostname%] - [%servicedesc%] (Generic)",
+	"title": "[%fieldkey%] [%attrs%] in [%hostname%] (Generic)",
 	"id": [%serial%],
 	"datasource": "[%GRAFANADATASOURCE%]",
 	"isNew": true,

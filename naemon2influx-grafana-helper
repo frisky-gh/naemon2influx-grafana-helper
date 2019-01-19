@@ -40,6 +40,31 @@ sub accesslog ($;@) {
 	printf $LOGFH "$t $format\n", @args;
 }
 
+sub var2ltsv ( \% ){
+	my ($var) = @_;
+	my @ltsv;
+	push @ltsv, "host_service:".$var->{host_service} if defined $var->{host_service};
+	foreach my $k ( sort {$a cmp $b} keys %$var ){
+		next if $k eq 'host_service';
+                push @ltsv, "$k:".$var->{$k};
+	}
+	return join "\t", @ltsv;
+}
+
+sub ltsv2var ( $ ){
+	my ($ltsv) = @_;
+	my %var;
+	foreach my $kv ( split m"\t", $ltsv ){
+		$kv =~ m"^([-./\[\]\w]+):(.*)$" or do {
+			next;
+		};
+		my $k = $1;
+		my $v = $2;
+		$var{$k} = $v;
+	}
+	return %var;
+}
+
 ####
 sub read_naemon2influx_cfg () {
 	my $filename = $NAEMON2INFLUX_CFG;
@@ -160,11 +185,9 @@ sub read_urlmap () {
 	};
 	while( <$h> ){
 		chomp;
-		m"^([^,]+),([^,]+),([^,]+),(\d+),([^,]+)$" or do {
-			print STGERR "ERROR: $filename:$.: Illegal format.\n";
-			next;
-		};
-		$map{"$1,$2"} = "$3,$4,$5";
+		my %var = ltsv2var $_;
+		my $host_service = $var{host_service};
+		$map{$host_service} = \%var;
 	}
 	close $h or do {
 		die "close failed for $filename: $OS_ERROR, stopped";
@@ -180,25 +203,19 @@ sub search_urlmap ($$) {
 		#die "cannot open $filename: $OS_ERROR, stopped";
 		return undef, undef, undef;
 	};
-	my $url;
-	my $id,
-	my $panel_ids;
+	my $r;
 	while( <$h> ){
 		chomp;
-		m"^([^,]+),([^,]+),([^,]+),(\d+),([^,]+)$" or do {
-			print STDERR "ERROR: $filename:$.: Illegal format.\n";
-			next;
-		};
-		next unless "$host,$service" eq "$1,$2";
-		$url = $3;
-		$id = $4;
-		$panel_ids = $5;
+		my %var = ltsv2var $_;
+		my $host_service = $var{host_service};
+		next unless "$host,$service" eq $host_service;
+		$r = \%var;
 		last;
 	}
 	close $h or do {
 		die "close failed for $filename: $OS_ERROR, stopped";
 	};
-	return $url, $id, $panel_ids;
+	return $r;
 }
 
 sub write_urlmap (\%) {
@@ -208,7 +225,8 @@ sub write_urlmap (\%) {
 		die "cannot open $filename: $OS_ERROR, stopped";
 	};
 	foreach my $k ( keys %$map ){
-		print $h $k, ",", $map->{$k}, "\n";
+		my $ltsv = var2ltsv %{$map->{$k}};
+		print $h "$ltsv\n";
 	}
 	close $h or do {
 		die "close failed for $filename: $OS_ERROR, stopped";
@@ -219,8 +237,8 @@ sub write_urlmap (\%) {
 sub cmp_urlmap (\%\%) {
 	my ($left, $right) = @_;
 	my %c;
-	while( my ($k, $v) = each %$left ) { $c{"$k,$v"} |= 1; }
-	while( my ($k, $v) = each %$right ){ $c{"$k,$v"} |= 2; }
+	while( my ($k, $v) = each %$left ) { my $ltsv = var2ltsv %$v; $c{"$k,$ltsv"} |= 1; }
+	while( my ($k, $v) = each %$right ){ my $ltsv = var2ltsv %$v; $c{"$k,$ltsv"} |= 2; }
 	my @r;
 	while( my ($i, $r) = each %c ){
 		next if $r == 3;
@@ -472,15 +490,16 @@ sub read_fieldlastvalues_from_influxdb ($$) {
 #	}
 }
 
-sub expand_matches ($\@) {
-	my ($text, $matches) = @_;
+sub expand_matches ($\%\@) {
+	my ($text, $params, $matches) = @_;
 	$text =~ s{
-		(?: \$(\d+) | \$\{(\d+)\} )
+		\$ (?: (\d+) | \{(\d+)\} | (\w+) | \$\{(\w+)\} )
 	}{
 		my $n;
-		$n = $1 if $1 ne '';
-		$n = $2 if $2 ne '';
-		$matches->[$n];
+		if   ( $1 ne '' ){ $matches->[$1]; }
+		elsif( $2 ne '' ){ $matches->[$2]; }
+		elsif( $3 ne '' ){ $params->{$3}; }
+		elsif( $4 ne '' ){ $params->{$4}; }
 	}egx;
 	return $text;
 }
@@ -582,13 +601,23 @@ sub generate_panelsseed (\@\@\@) {
 				}
 				my @m = ($fieldkey, @m1, @m2);
 
-				$graphid = expand_matches $rule->[3], @m;
+				my %p = (
+					'fieldkey'    => $fieldkey,
+					'series'      => $s,
+					'measurement' => $measurement,
+					'tags'        => $tags_json,
+					'tags_text'   => $tags_text,
+					'tags_json'   => $tags_json,
+					'tags_where'  => $tags_where,
+				);
+
+				$graphid = expand_matches $rule->[3], %p, @m;
 
 				foreach my $i ( split m"\s+", $rule->[4] ){
 					die "$i, stopped" unless $i =~ m"^(\w+)=(.*)$";
 					my $k = $1;
 					my $v = $2;
-					$params{$k} = expand_matches $v, @m;
+					$params{$k} = expand_matches $v, %p, @m;
 				}
 			}
 
@@ -686,18 +715,42 @@ sub validate_panelsjson ($) {
 		die "cannot validate panels json, stopped";
 	}
 	my $valid_json = encode_json $rows;
-	my @panel_ids;
+	my %panel_info;
 	foreach my $row ( @$rows ){
 		my $panels = $row->{panels};
 		unless( $panels ){
 			die "json has no panel, stopped";
 		}
 		foreach my $panel ( @$panels ){
-			next unless $panel->{id};
-			push @panel_ids, $panel->{id};
+			my $panel_id = $panel->{id};
+			next unless $panel_id;
+			my $title = $panel->{title};
+			next unless $title;
+			my $targets = $panel->{targets};
+			my %field;
+			next unless $targets;
+			foreach my $target ( @$targets ){
+				my $fields = $target->{select};
+				next unless $fields;
+				foreach my $field ( @$fields ){
+					foreach my $i ( @$field ){
+						next unless $i->{type} eq 'field';
+						my $name = $i->{params}->[0];
+						$name =~ s{\.(warn|crit)_(upper|lower)$}{};
+						$field{$name} = 1;
+					}
+				}
+			}
+			$panel_info{"panels.$panel_id.id"} = $panel_id;
+			$panel_info{"panels.$panel_id.title"} = $title;
+			my $i = 0;
+			while( my ($k) = each %field ){
+				$panel_info{"panels.$panel_id.fields.$i"} = $k;
+				$i++;
+			}
 		}
 	}
-	return $valid_json, @panel_ids;
+	return $valid_json, %panel_info;
 }
 
 ####
@@ -712,12 +765,20 @@ sub cmd_cron ($$$) {
 	if( @series_diff ){
 		foreach my $diff ( @series_diff ){
 			my ($host, $service) = split m",", $diff;
-			my ($json, @panel_ids) = validate_panelsjson
+			my ($json, %panel_info) = validate_panelsjson
 				generate_panelsjson $n2iconf, $rules, $host, $service, $grafanadatasource;
 			my @tags = ($host, $service);
 			my $r = register_dashboard_to_grafana $conf, "$host, $service", $json, \@tags;
-			$curr_map{"$host,$service"} = sprintf "%s/%s,%d,%s",
-				$r->{uid}, $r->{slug}, $r->{id}, "@panel_ids";
+			my %info = ( %panel_info, %$r );
+			$curr_map{"$host,$service"} = {
+				'host_service' => $diff,
+				'host'    => $host,
+				'service' => $service,
+				'dashboard_uid'  => $r->{uid},
+				'dashboard_slug' => $r->{slug},
+				'dashboard_id'   => $r->{id},
+				%panel_info,
+			};
 		}
 		write_all_series_cache @curr_series;
 	}
@@ -759,45 +820,77 @@ sub action_rows ($$$$$) {
 	$conn->send_response($res);
 }
 
+sub make_dashboard_url ($$) {
+	my ($conf, $dashboard_info) = @_;
+	my $dashboard_url = $conf->{GRAFANAURL};
+	$dashboard_url =~ s{/$}{};
+	$dashboard_url .= sprintf "/d/%s/%s", $dashboard_info->{dashboard_uid}, $dashboard_info->{dashboard_slug};
+	$dashboard_url .= "?orgId=" . $conf->{GRAFANAORGID} if $conf->{GRAFANAORGID};
+	return $dashboard_url;
+}
+
+sub make_panel_url ($$$) {
+	my ($conf, $dashboard_info, $panel_info) = @_;
+	my $panel_url = $conf->{GRAFANAURL};
+	$panel_url =~ s{/$}{};
+	$panel_url .= sprintf "/render/d-solo/%s/%s?panelId=%d&width=600&height=200&timeout=5",
+		$dashboard_info->{dashboard_uid}, $dashboard_info->{dashboard_slug},
+		$panel_info->{id};
+	$panel_url .= "&orgId=" . $conf->{GRAFANAORGID} if $conf->{GRAFANAORGID};
+	return $panel_url;
+}
+
 sub action_redirect ($$$$$) {
 	my ($conf, $n2iconf, $rules, $conn, $req) = @_;
 	my $query = URI::Query->new( $req->uri->query );
 	my %query = $query->hash;
 
-	my ($path, $id, $panel_ids) = search_urlmap $query{hostname}, $query{servicedesc};
-	unless( defined $path ){
+	my $dashboard_info = search_urlmap $query{hostname}, $query{servicedesc};
+	unless( defined $dashboard_info ){
 		$conn->send_error(RC_FORBIDDEN);
 		return;
 	}
-	my $url = $conf->{GRAFANAURL};
-	$url =~ s{/$}{};
-	$url .= "/d/$path";
-	$url .= "?orgId=" . $conf->{GRAFANAORGID} if $conf->{GRAFANAORGID};
+
+	my $dashboard_url = make_dashboard_url $conf, $dashboard_info;
 	accesslog "redirect: host=%s, service=%s -> url=%s",
-		$query{hostname}, $query{servicedesc}, $url;
+		$query{hostname}, $query{servicedesc}, $dashboard_url;
 	my $res = HTTP::Response->new;
 	$res->code(307);
-	$res->header('Location' => $url);
+	$res->header('Location' => $dashboard_url);
 	$conn->send_response($res);
 }
 
-sub action_panels ($$$$$) {
+sub action_dashboard_info ($$$$$) {
 	my ($conf, $n2iconf, $rules, $conn, $req) = @_;
 	my $query = URI::Query->new( $req->uri->query );
 	my %query = $query->hash;
 
-	my ($path, $id, $panel_ids) = search_urlmap $query{hostname}, $query{servicedesc};
-	unless( defined $path ){
+	my $dashboard_info = search_urlmap $query{hostname}, $query{servicedesc};
+	unless( defined $dashboard_info ){
 		$conn->send_error(RC_FORBIDDEN);
 		return;
 	}
 
-	my @ids = split m"\s+", $panel_ids;
+	my $dashboard_url = make_dashboard_url $conf, $dashboard_info;
+	my %panels;
+	while( my ($k, $v) = each %$dashboard_info ){
+		if( $k =~ m"^panels\.(\d+)\.fields\.(\d+)$" ){
+			$panels{$1}->{fields}->[$2] = $v;
+		}elsif( $k =~ m"^panels\.(\d+)\.(.*)$" ){
+			$panels{$1}->{$2} = $v;
+		}
+	}
+	while( my ($k, $panel_info) = each %panels ){
+		my $panel_url = make_panel_url $conf, $dashboard_info, $panel_info;
+		$panel_info->{url} = $panel_url;
+	}
+
 	my $obj = {
-		"url" => "/d/$path",
-		"id" => [ @ids ],
+		"dashboard_url" => $dashboard_url,
+		"panels" => [ values %panels ],
 	};
-	my $json = encode_json $obj;
+	my $encoder = JSON->new->pretty;
+	my $json = $encoder->encode($obj);
 
 	my $res = HTTP::Response->new;
 	$res->code(200);
@@ -836,11 +929,11 @@ sub cmd_daemon ($$$) {
 		my $path = uri_unescape $req->uri->path;
 		accesslog 'req: method=%s path=%s', $method, $path;
 		if    ($method eq 'GET' && $path eq "/rows.js" ){
-			action_rows     $conf, $n2iconf, $rules, $conn, $req;
-		}elsif($method eq 'GET' && $path eq "/panels.js" ){
-			action_panels   $conf, $n2iconf, $rules, $conn, $req;
+			action_rows           $conf, $n2iconf, $rules, $conn, $req;
+		}elsif($method eq 'GET' && $path eq "/dashboard_info.js" ){
+			action_dashboard_info $conf, $n2iconf, $rules, $conn, $req;
 		}elsif($method eq 'GET' && $path eq "/redirect.html" ){
-			action_redirect $conf, $n2iconf, $rules, $conn, $req;
+			action_redirect       $conf, $n2iconf, $rules, $conn, $req;
 		}else{
 			$conn->send_error(RC_FORBIDDEN);
 		}
