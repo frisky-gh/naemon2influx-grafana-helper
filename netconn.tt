@@ -1,0 +1,121 @@
+//// Network Connection
+[%- attrs = sub(series, "^[^,]+,", ",") %]
+[%- attrs = sub(attrs, ",hostname=[^,]+(,|$)", ",") %]
+[%- attrs = sub(attrs, "^,", "") %]
+[%- attrs = sub(attrs, ",$", "") %]
+{
+    "title": "Row",
+    "collapse": false,
+    "editable": true,
+    "height": "250px",
+    "panels": [ {
+	"title": "Network Connections \"[%target%]\" in [%hostname%]",
+	"id": [%serial%],
+	"datasource": "[%GRAFANADATASOURCE%]",
+	"isNew": true,
+	"editable": true,
+	"tooltip": { "shared": true, "value_type": "individual" },
+	"type": "graph",
+	"x-axis": true,
+	"y-axis": true,
+	"y_formats": [ "short" ],
+	"grid": { "leftLogBase": 1, "leftMax": null, "leftMin": -1 },
+	"gridPos": { "w": 6, "h": 6, "x": 0, "y": 0 },
+	"span": 6,
+	"legend": {
+	    "show": true,
+	    "values": true, "avg": true, "max": true, "min": true, "current": false, "total": false,
+	    "rightSide": true, "alignAsTable": true, "sideWidth": 300,
+	    "hideEmpty": true, "hideZero": false
+	},
+	"targets": [ {
+	    "refId": "0001",
+	    "dsType": "influxdb",
+	    "resultFormat": "time_series",
+	    "alias": "$col",
+	    "groupBy": [ { "type": "time", "params": [ "$__interval" ] } ],
+	    "measurement": "[%measurement%]",
+	    "tags": [%tags%],
+	    "select": [
+		[ { "type": "field", "params": [ "port_conns.warn_upper" ] },
+		  { "type": "mean",  "params": [] },
+		  { "type": "alias", "params": [ "warn_upper" ] } ],
+		[ { "type": "field", "params": [ "port_conns.warn_lower" ] },
+		  { "type": "mean",  "params": [] },
+		  { "type": "alias", "params": [ "warn_lower" ] } ],
+		[ { "type": "field", "params": [ "port_conns.crit_upper" ] },
+		  { "type": "mean",  "params": [] },
+		  { "type": "alias", "params": [ "crit_upper" ] } ],
+		[ { "type": "field", "params": [ "port_conns.crit_lower" ] },
+		  { "type": "mean",  "params": [] },
+		  { "type": "alias", "params": [ "crit_lower" ] } ],
+		[ { "type": "field", "params": [ "port_conns" ] },
+		  { "type": "mean",  "params": [] },
+		  { "type": "alias", "params": [ "connections" ] } ]
+	    ]
+	} ],
+	"nullPointMode": "connected"
+    }, {
+	"title": "Network Connection \"[%target%]\" Queue Size in [%hostname%]",
+	"id": [%serial%],
+	"datasource": "[%GRAFANADATASOURCE%]",
+	"isNew": true,
+	"editable": true,
+	"tooltip": { "shared": true, "value_type": "individual" },
+	"type": "graph",
+	"x-axis": true,
+	"y-axis": true,
+	"y_formats": [ "short" ],
+	"grid": { "leftLogBase": 1, "leftMax": null, "leftMin": 0 },
+	"gridPos": { "w": 6, "h": 6, "x": 6, "y": 0 },
+	"span": 6,
+	"legend": {
+	    "show": true,
+	    "values": true, "avg": true, "max": true, "min": true, "current": false, "total": false,
+	    "rightSide": true, "alignAsTable": true, "sideWidth": 300,
+	    "hideEmpty": true, "hideZero": false
+	},
+	"targets": [ {
+	    "refId": "0001",
+	    "dsType": "influxdb",
+	    "resultFormat": "time_series",
+	    "alias": "$col",
+	    "groupBy": [ { "type": "time", "params": [ "$__interval" ] } ],
+	    "measurement": "[%measurement%]",
+	    "tags": [%tags%],
+	    "select": [
+		[ { "type": "field", "params": [ "port_recvq.warn_upper" ] },
+		  { "type": "mean",  "params": [] },
+		  { "type": "alias", "params": [ "recv_warn_upper" ] } ],
+		[ { "type": "field", "params": [ "port_recvq.warn_lower" ] },
+		  { "type": "mean",  "params": [] },
+		  { "type": "alias", "params": [ "recv_warn_lower" ] } ],
+		[ { "type": "field", "params": [ "port_recvq.crit_upper" ] },
+		  { "type": "mean",  "params": [] },
+		  { "type": "alias", "params": [ "recv_crit_upper" ] } ],
+		[ { "type": "field", "params": [ "port_recvq.crit_lower" ] },
+		  { "type": "mean",  "params": [] },
+		  { "type": "alias", "params": [ "recv_crit_lower" ] } ],
+		[ { "type": "field", "params": [ "port_recvq" ] },
+		  { "type": "mean",  "params": [] },
+		  { "type": "alias", "params": [ "recv_queue" ] } ],
+		[ { "type": "field", "params": [ "port_sendq.warn_upper" ] },
+		  { "type": "mean",  "params": [] },
+		  { "type": "alias", "params": [ "send_warn_upper" ] } ],
+		[ { "type": "field", "params": [ "port_sendq.warn_lower" ] },
+		  { "type": "mean",  "params": [] },
+		  { "type": "alias", "params": [ "send_warn_lower" ] } ],
+		[ { "type": "field", "params": [ "port_sendq.crit_upper" ] },
+		  { "type": "mean",  "params": [] },
+		  { "type": "alias", "params": [ "send_crit_upper" ] } ],
+		[ { "type": "field", "params": [ "port_sendq.crit_lower" ] },
+		  { "type": "mean",  "params": [] },
+		  { "type": "alias", "params": [ "send_crit_lower" ] } ],
+		[ { "type": "field", "params": [ "port_sendq" ] },
+		  { "type": "mean",  "params": [] },
+		  { "type": "alias", "params": [ "send_queue" ] } ]
+	    ]
+	} ],
+	"nullPointMode": "connected"
+    } ]
+}
