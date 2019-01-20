@@ -1,0 +1,74 @@
+//// Process
+[%- attrs = sub(series, "^[^,]+,", ",") %]
+[%- attrs = sub(attrs, ",hostname=[^,]+(,|$)", ",") %]
+[%- attrs = sub(attrs, "^,", "") %]
+[%- attrs = sub(attrs, ",$", "") %]
+{
+    "title": "Row",
+    "collapse": false,
+    "editable": true,
+    "height": "250px",
+    "panels": [ {
+	"title": "Process \"[%target%]\" in [%hostname%]",
+	"id": [%serial%],
+	"datasource": "[%GRAFANADATASOURCE%]",
+	"isNew": true,
+	"editable": true,
+	"tooltip": { "shared": true, "value_type": "individual" },
+	"type": "graph",
+	"x-axis": true,
+	"y-axis": true,
+	"y_formats": [ "short" ],
+	"grid": { "leftLogBase": 1, "leftMax": null, "leftMin": 0 },
+	"gridPos": { "w": 12, "h": 6, "x": 0, "y": 0 },
+	"span": 12,
+	"legend": {
+	    "show": true,
+	    "values": true, "avg": true, "max": true, "min": true, "current": false, "total": false,
+	    "rightSide": true, "alignAsTable": true, "sideWidth": 300,
+	    "hideEmpty": true, "hideZero": false
+	},
+	"targets": [ {
+	    "refId": "0001",
+	    "dsType": "influxdb",
+	    "resultFormat": "time_series",
+	    "alias": "$col",
+	    "groupBy": [ { "type": "time", "params": [ "$__interval" ] } ],
+	    "measurement": "[%measurement%]",
+	    "tags": [%tags%],
+	    "select": [
+		[ { "type": "field", "params": [ "proc_procs.warn_upper" ] },
+		  { "type": "mean",  "params": [] },
+		  { "type": "alias", "params": [ "procs_warn_upper" ] } ],
+		[ { "type": "field", "params": [ "proc_procs.warn_lower" ] },
+		  { "type": "mean",  "params": [] },
+		  { "type": "alias", "params": [ "procs_warn_lower" ] } ],
+		[ { "type": "field", "params": [ "proc_procs.crit_upper" ] },
+		  { "type": "mean",  "params": [] },
+		  { "type": "alias", "params": [ "procs_crit_upper" ] } ],
+		[ { "type": "field", "params": [ "proc_procs.crit_lower" ] },
+		  { "type": "mean",  "params": [] },
+		  { "type": "alias", "params": [ "procs_crit_lower" ] } ],
+		[ { "type": "field", "params": [ "proc_procs" ] },
+		  { "type": "mean",  "params": [] },
+		  { "type": "alias", "params": [ "procs" ] } ],
+		[ { "type": "field", "params": [ "proc_threads.warn_upper" ] },
+		  { "type": "mean",  "params": [] },
+		  { "type": "alias", "params": [ "threads_warn_upper" ] } ],
+		[ { "type": "field", "params": [ "proc_threads.warn_lower" ] },
+		  { "type": "mean",  "params": [] },
+		  { "type": "alias", "params": [ "threads_warn_lower" ] } ],
+		[ { "type": "field", "params": [ "proc_threads.crit_upper" ] },
+		  { "type": "mean",  "params": [] },
+		  { "type": "alias", "params": [ "threads_crit_upper" ] } ],
+		[ { "type": "field", "params": [ "proc_threads.crit_lower" ] },
+		  { "type": "mean",  "params": [] },
+		  { "type": "alias", "params": [ "threads_crit_lower" ] } ],
+		[ { "type": "field", "params": [ "proc_threads" ] },
+		  { "type": "mean",  "params": [] },
+		  { "type": "alias", "params": [ "threads" ] } ]
+	    ]
+	} ],
+	"nullPointMode": "connected"
+    } ]
+}

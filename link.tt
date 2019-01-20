@@ -20,7 +20,7 @@
 	"x-axis": true,
 	"y-axis": true,
 	"y_formats": [ "short" ],
-	"grid": { "leftLogBase": 1, "leftMax": null, "leftMin": null },
+	"grid": { "leftLogBase": 1, "leftMax": null, "leftMin": 0 },
 	"gridPos": { "w": 6, "h": 6, "x": 0, "y": 0 },
 	"span": 6,
 	"legend": {
@@ -52,7 +52,7 @@
 		  { "type": "alias", "params": [ "rx_crit_lower" ] } ],
 		[ { "type": "field", "params": [ "link_rx_throughput_mbps" ] },
 		  { "type": "mean",  "params": [] },
-		  { "type": "alias", "params": [ "rx/min" ] } ],
+		  { "type": "alias", "params": [ "rx Mbps" ] } ],
 		[ { "type": "field", "params": [ "link_tx_throughput_mbps.warn_upper" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "tx_warn_upper" ] } ],
@@ -67,12 +67,12 @@
 		  { "type": "alias", "params": [ "tx_crit_lower" ] } ],
 		[ { "type": "field", "params": [ "link_tx_throughput_mbps" ] },
 		  { "type": "mean",  "params": [] },
-		  { "type": "alias", "params": [ "tx/min" ] } ]
+		  { "type": "alias", "params": [ "tx Mbps" ] } ]
 	    ]
 	} ],
 	"nullPointMode": "connected"
     }, {
-	"title": "Network Link \"[%target%]\" Traffic in [%hostname%]",
+	"title": "Network Link \"[%target%]\" Traffic (1H average) in [%hostname%]",
 	"id": [%serial%],
 	"datasource": "[%GRAFANADATASOURCE%]",
 	"isNew": true,
@@ -82,7 +82,7 @@
 	"x-axis": true,
 	"y-axis": true,
 	"y_formats": [ "short" ],
-	"grid": { "leftLogBase": 1, "leftMax": null, "leftMin": null },
+	"grid": { "leftLogBase": 1, "leftMax": null, "leftMin": 0 },
 	"gridPos": { "w": 6, "h": 6, "x": 6, "y": 0 },
 	"span": 6,
 	"legend": {
@@ -114,7 +114,7 @@
 		  { "type": "alias", "params": [ "rx_crit_lower" ] } ],
 		[ { "type": "field", "params": [ "link_rx_throughput_1h_avg_mbps" ] },
 		  { "type": "mean",  "params": [] },
-		  { "type": "alias", "params": [ "rx/min" ] } ],
+		  { "type": "alias", "params": [ "rx Mbps" ] } ],
 		[ { "type": "field", "params": [ "link_tx_throughput_1h_avg_mbps.warn_upper" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "tx_warn_upper" ] } ],
@@ -129,7 +129,7 @@
 		  { "type": "alias", "params": [ "tx_crit_lower" ] } ],
 		[ { "type": "field", "params": [ "link_tx_throughput_1h_avg_mbps" ] },
 		  { "type": "mean",  "params": [] },
-		  { "type": "alias", "params": [ "tx/min" ] } ]
+		  { "type": "alias", "params": [ "tx Mbps" ] } ]
 	    ]
 	} ],
 	"nullPointMode": "connected"
@@ -152,7 +152,7 @@
 	"x-axis": true,
 	"y-axis": true,
 	"y_formats": [ "short" ],
-	"grid": { "leftLogBase": 1, "leftMax": null, "leftMin": null },
+	"grid": { "leftLogBase": 1, "leftMax": null, "leftMin": 0 },
 	"gridPos": { "w": 6, "h": 6, "x": 0, "y": 0 },
 	"span": 6,
 	"legend": {
@@ -204,7 +204,7 @@
 	} ],
 	"nullPointMode": "connected"
     }, {
-	"title": "Network Link \"[%target%]\" Packets in [%hostname%]",
+	"title": "Network Link \"[%target%]\" Packets (1H average) in [%hostname%]",
 	"id": [%serial%],
 	"datasource": "[%GRAFANADATASOURCE%]",
 	"isNew": true,
@@ -214,7 +214,7 @@
 	"x-axis": true,
 	"y-axis": true,
 	"y_formats": [ "short" ],
-	"grid": { "leftLogBase": 1, "leftMax": null, "leftMin": null },
+	"grid": { "leftLogBase": 1, "leftMax": null, "leftMin": 0 },
 	"gridPos": { "w": 6, "h": 6, "x": 6, "y": 0 },
 	"span": 6,
 	"legend": {
@@ -284,7 +284,7 @@
 	"x-axis": true,
 	"y-axis": true,
 	"y_formats": [ "short" ],
-	"grid": { "leftLogBase": 1, "leftMax": null, "leftMin": null },
+	"grid": { "leftLogBase": 1, "leftMax": null, "leftMin": 0 },
 	"gridPos": { "w": 6, "h": 6, "x": 0, "y": 0 },
 	"span": 6,
 	"legend": {
@@ -336,7 +336,7 @@
 	} ],
 	"nullPointMode": "connected"
     }, {
-	"title": "Network Link \"[%target%]\" Dropped Packets in [%hostname%]",
+	"title": "Network Link \"[%target%]\" Dropped Packets (1H average) in [%hostname%]",
 	"id": [%serial%],
 	"datasource": "[%GRAFANADATASOURCE%]",
 	"isNew": true,
@@ -346,7 +346,7 @@
 	"x-axis": true,
 	"y-axis": true,
 	"y_formats": [ "short" ],
-	"grid": { "leftLogBase": 1, "leftMax": null, "leftMin": null },
+	"grid": { "leftLogBase": 1, "leftMax": null, "leftMin": 0 },
 	"gridPos": { "w": 6, "h": 6, "x": 6, "y": 0 },
 	"span": 6,
 	"legend": {
@@ -416,7 +416,7 @@
 	"x-axis": true,
 	"y-axis": true,
 	"y_formats": [ "short" ],
-	"grid": { "leftLogBase": 1, "leftMax": null, "leftMin": null },
+	"grid": { "leftLogBase": 1, "leftMax": null, "leftMin": 0 },
 	"gridPos": { "w": 6, "h": 6, "x": 0, "y": 0 },
 	"span": 6,
 	"legend": {
@@ -468,7 +468,7 @@
 	} ],
 	"nullPointMode": "connected"
     }, {
-	"title": "Network Link \"[%target%]\" Errors in [%hostname%]",
+	"title": "Network Link \"[%target%]\" Errors (1H average) in [%hostname%]",
 	"id": [%serial%],
 	"datasource": "[%GRAFANADATASOURCE%]",
 	"isNew": true,
@@ -478,7 +478,7 @@
 	"x-axis": true,
 	"y-axis": true,
 	"y_formats": [ "short" ],
-	"grid": { "leftLogBase": 1, "leftMax": null, "leftMin": null },
+	"grid": { "leftLogBase": 1, "leftMax": null, "leftMin": 0 },
 	"gridPos": { "w": 6, "h": 6, "x": 6, "y": 0 },
 	"span": 6,
 	"legend": {
@@ -548,7 +548,7 @@
 	"x-axis": true,
 	"y-axis": true,
 	"y_formats": [ "short" ],
-	"grid": { "leftLogBase": 1, "leftMax": null, "leftMin": null },
+	"grid": { "leftLogBase": 1, "leftMax": null, "leftMin": 0 },
 	"gridPos": { "w": 6, "h": 6, "x": 0, "y": 0 },
 	"span": 6,
 	"legend": {
@@ -630,7 +630,7 @@
 	} ],
 	"nullPointMode": "connected"
     }, {
-	"title": "Network Link \"[%target%]\" Misc Packets in [%hostname%]",
+	"title": "Network Link \"[%target%]\" Misc Packets (1H average) in [%hostname%]",
 	"id": [%serial%],
 	"datasource": "[%GRAFANADATASOURCE%]",
 	"isNew": true,
@@ -640,7 +640,7 @@
 	"x-axis": true,
 	"y-axis": true,
 	"y_formats": [ "short" ],
-	"grid": { "leftLogBase": 1, "leftMax": null, "leftMin": null },
+	"grid": { "leftLogBase": 1, "leftMax": null, "leftMin": 0 },
 	"gridPos": { "w": 6, "h": 6, "x": 6, "y": 0 },
 	"span": 6,
 	"legend": {
