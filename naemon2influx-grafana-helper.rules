@@ -1,25 +1,24 @@
-# series	field		  	   template    graphID	 params
-.*		(.*)		 	   generic     NEW
-.*		\w+\.max		   IGNORE
-.*		\w+\.min		   IGNORE
-.*		\w+\.warn_upper		   IGNORE
-.*		\w+\.warn_lower		   IGNORE
-.*		\w+\.crit_upper		   IGNORE
-.*		\w+\.crit_lower		   IGNORE
-.*		(\w+_cnt)		   gcounter	NEW
-.*		(\w+_pct)		   gpercent	NEW
-.*		(\w+)_(.pm)		   gpm		gpm:$1,$tags_text	target=$1 unit=$2
-.*		(\w+)_1h_avg_(.pm)	   gpm		gpm:$1,$tags_text	target=$1 unit=$2
-.*		(\w+)_(total|used|free|avail) gvolume	gvolume:$1,$tags_text	target=$1
+# series	field		  	template graphID	 params
+.*		(.*)		 	generic  NEW
+.*		\w+\.max		IGNORE
+.*		\w+\.min		IGNORE
+.*		\w+\.warn_upper		IGNORE
+.*		\w+\.warn_lower		IGNORE
+.*		\w+\.crit_upper		IGNORE
+.*		\w+\.crit_lower		IGNORE
+.*		(\w+_cnt)		gcounter NEW
+.*		(\w+_pct)		gpercent NEW
+.*		(\w+)_(.pm)		gpm	gpm:$1,$2,$tags_text target=$1 unit=$2
+.*		(\w+)_1h_avg_(.pm)	gpm	gpm:$1,$2,$tags_text target=$1 unit=$2
+.*		(\w+)_(total|used|free|avail) gvolume gvolume:$1,$tags_text target=$1
 
-.*		cpu_\w+		 	   cpu		cpu
-.*		mem_\w+		 	   mem		mem
-.*,disk=([^,]+).*	\w+		   disk 	disk:$1		target=$1
-.*,link=([^,]+).*	\w+		   link		link:$1		target=$1
-.*,dev=([^,]+).*	\w+		   deviopm	deviopm:$1	target=$1
-.*,port=([^,]+).*	\w+		   netconn	netconn:$1	target=$1
-.*,proc=([^,]+).*	\w+		   proc 	proc:$1 	target=$1
-
+.*		cpu_\w+		 	cpu	cpu
+.*		mem_\w+		 	mem	mem
+.*,disk=([^,]+).*	\w+		disk 	disk:$1		target=$1
+.*,link=([^,]+).*	\w+		link	link:$1		target=$1
+.*,port=([^,]+).*	\w+		netconn	netconn:$1	target=$1
+.*,proc=([^,]+).*	\w+		proc 	proc:$1 	target=$1
+.*,dev=([^,]+).*	\w+		deviopm	deviopm:$1	target=$1
 
 ####
 

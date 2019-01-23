@@ -1,4 +1,4 @@
-//// Block Device I/O Per Minutes
+//// Block Device I/O Transaction Per Minutes
 [%- attrs = sub(series, "^[^,]+,", ",") %]
 [%- attrs = sub(attrs, ",hostname=[^,]+(,|$)", ",") %]
 [%- attrs = sub(attrs, "^,", "") %]
@@ -9,7 +9,7 @@
     "editable": true,
     "height": "250px",
     "panels": [ {
-	"title": "Block Device \"[%target%]\" I/O Throughput in [%hostname%]",
+	"title": "Block Device \"[%target%]\" I/O Transaction in [%hostname%]",
 	"id": [%serial%],
 	"datasource": "[%GRAFANADATASOURCE%]",
 	"isNew": true,
@@ -51,7 +51,7 @@
 		  { "type": "alias", "params": [ "read_crit_lower" ] } ],
 		[ { "type": "field", "params": [ "dev_read_tpm" ] },
 		  { "type": "mean",  "params": [] },
-		  { "type": "alias", "params": [ "read/min" ] } ],
+		  { "type": "alias", "params": [ "read txn/min" ] } ],
 		[ { "type": "field", "params": [ "dev_write_tpm.warn_upper" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "write_warn_upper" ] } ],
@@ -66,12 +66,12 @@
 		  { "type": "alias", "params": [ "write_crit_lower" ] } ],
 		[ { "type": "field", "params": [ "dev_write_tpm" ] },
 		  { "type": "mean",  "params": [] },
-		  { "type": "alias", "params": [ "write/min" ] } ]
+		  { "type": "alias", "params": [ "write txn/min" ] } ]
 	    ]
 	} ],
 	"nullPointMode": "connected"
     }, {
-	"title": "Block Device \"[%target%]\" I/O Throughput in [%hostname%]",
+	"title": "Block Device \"[%target%]\" I/O Transaction (1H average) in [%hostname%]",
 	"id": [%serial%],
 	"datasource": "[%GRAFANADATASOURCE%]",
 	"isNew": true,
@@ -134,14 +134,14 @@
 	"nullPointMode": "connected"
     } ]
 },
-//// Block Device I/O Per Minutes
+//// Block Device I/O Sectors Per Minutes
 {
     "title": "Row",
     "collapse": false,
     "editable": true,
     "height": "250px",
     "panels": [ {
-	"title": "Block Device \"[%target%]\" [%attrs%] I/O Throughput in [%hostname%]",
+	"title": "Block Device \"[%target%]\" I/O Sectors in [%hostname%]",
 	"id": [%serial%],
 	"datasource": "[%GRAFANADATASOURCE%]",
 	"isNew": true,
@@ -169,41 +169,41 @@
 	    "measurement": "[%measurement%]",
 	    "tags": [%tags%],
 	    "select": [
-		[ { "type": "field", "params": [ "dev_read_tpm.warn_upper" ] },
+		[ { "type": "field", "params": [ "dev_read_spm.warn_upper" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "read_warn_upper" ] } ],
-		[ { "type": "field", "params": [ "dev_read_tpm.warn_lower" ] },
+		[ { "type": "field", "params": [ "dev_read_spm.warn_lower" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "read_warn_lower" ] } ],
-		[ { "type": "field", "params": [ "dev_read_tpm.crit_upper" ] },
+		[ { "type": "field", "params": [ "dev_read_spm.crit_upper" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "read_crit_upper" ] } ],
-		[ { "type": "field", "params": [ "dev_read_tpm.crit_lower" ] },
+		[ { "type": "field", "params": [ "dev_read_spm.crit_lower" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "read_crit_lower" ] } ],
-		[ { "type": "field", "params": [ "dev_read_tpm" ] },
+		[ { "type": "field", "params": [ "dev_read_spm" ] },
 		  { "type": "mean",  "params": [] },
-		  { "type": "alias", "params": [ "read/min" ] } ],
-		[ { "type": "field", "params": [ "dev_write_tpm.warn_upper" ] },
+		  { "type": "alias", "params": [ "read sectors/min" ] } ],
+		[ { "type": "field", "params": [ "dev_write_spm.warn_upper" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "write_warn_upper" ] } ],
-		[ { "type": "field", "params": [ "dev_write_tpm.warn_lower" ] },
+		[ { "type": "field", "params": [ "dev_write_spm.warn_lower" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "write_warn_lower" ] } ],
-		[ { "type": "field", "params": [ "dev_write_tpm.crit_upper" ] },
+		[ { "type": "field", "params": [ "dev_write_spm.crit_upper" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "write_crit_upper" ] } ],
-		[ { "type": "field", "params": [ "dev_write_tpm.crit_lower" ] },
+		[ { "type": "field", "params": [ "dev_write_spm.crit_lower" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "write_crit_lower" ] } ],
-		[ { "type": "field", "params": [ "dev_write_tpm" ] },
+		[ { "type": "field", "params": [ "dev_write_spm" ] },
 		  { "type": "mean",  "params": [] },
-		  { "type": "alias", "params": [ "write/min" ] } ]
+		  { "type": "alias", "params": [ "write sectors/min" ] } ]
 	    ]
 	} ],
 	"nullPointMode": "connected"
     }, {
-	"title": "Block Device \"[%target%]\" [%attrs%] I/O Throughput in [%hostname%]",
+	"title": "Block Device \"[%target%]\" I/O Sectors (1H average) in [%hostname%]",
 	"id": [%serial%],
 	"datasource": "[%GRAFANADATASOURCE%]",
 	"isNew": true,
@@ -231,36 +231,36 @@
 	    "measurement": "[%measurement%]",
 	    "tags": [%tags%],
 	    "select": [
-		[ { "type": "field", "params": [ "dev_read_1h_avg_tpm.warn_upper" ] },
+		[ { "type": "field", "params": [ "dev_read_1h_avg_spm.warn_upper" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "read_warn_upper" ] } ],
-		[ { "type": "field", "params": [ "dev_read_1h_avg_tpm.warn_lower" ] },
+		[ { "type": "field", "params": [ "dev_read_1h_avg_spm.warn_lower" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "read_warn_lower" ] } ],
-		[ { "type": "field", "params": [ "dev_read_1h_avg_tpm.crit_upper" ] },
+		[ { "type": "field", "params": [ "dev_read_1h_avg_spm.crit_upper" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "read_crit_upper" ] } ],
-		[ { "type": "field", "params": [ "dev_read_1h_avg_tpm.crit_lower" ] },
+		[ { "type": "field", "params": [ "dev_read_1h_avg_spm.crit_lower" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "read_crit_lower" ] } ],
-		[ { "type": "field", "params": [ "dev_read_1h_avg_tpm" ] },
+		[ { "type": "field", "params": [ "dev_read_1h_avg_spm" ] },
 		  { "type": "mean",  "params": [] },
-		  { "type": "alias", "params": [ "read/min" ] } ],
-		[ { "type": "field", "params": [ "dev_write_1h_avg_tpm.warn_upper" ] },
+		  { "type": "alias", "params": [ "read sectors/min" ] } ],
+		[ { "type": "field", "params": [ "dev_write_1h_avg_spm.warn_upper" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "write_warn_upper" ] } ],
-		[ { "type": "field", "params": [ "dev_write_1h_avg_tpm.warn_lower" ] },
+		[ { "type": "field", "params": [ "dev_write_1h_avg_spm.warn_lower" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "write_warn_lower" ] } ],
-		[ { "type": "field", "params": [ "dev_write_1h_avg_tpm.crit_upper" ] },
+		[ { "type": "field", "params": [ "dev_write_1h_avg_spm.crit_upper" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "write_crit_upper" ] } ],
-		[ { "type": "field", "params": [ "dev_write_1h_avg_tpm.crit_lower" ] },
+		[ { "type": "field", "params": [ "dev_write_1h_avg_spm.crit_lower" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "write_crit_lower" ] } ],
-		[ { "type": "field", "params": [ "dev_write_1h_avg_tpm" ] },
+		[ { "type": "field", "params": [ "dev_write_1h_avg_spm" ] },
 		  { "type": "mean",  "params": [] },
-		  { "type": "alias", "params": [ "write/min" ] } ]
+		  { "type": "alias", "params": [ "write sectors/min" ] } ]
 	    ]
 	} ],
 	"nullPointMode": "connected"
