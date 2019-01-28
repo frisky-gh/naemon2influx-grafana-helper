@@ -1,7 +1,4 @@
 //// Disk
-[% targetname = sub(hostname, "/.*$", "") %]
-[% targettype = sub(hostname, "^.*/", "") %]
-[% detectorname = sub(servicedesc, "^.*_", "") %]
 {
     "title": "Row",
     "collapse": false,
@@ -9,7 +6,7 @@
     "height": "250px",
     "panels": [
 	{
-	    "title": "Disk volume of [%targetname%]:[%target%]",
+	    "title": "Disk \"[%target%]\" Volume in [%hostname%]",
 	    "id": [%serial%],
 	    "datasource": "[%GRAFANADATASOURCE%]",
 	    "isNew": true,
@@ -19,13 +16,13 @@
 	    "x-axis": true,
 	    "y-axis": true,
 	    "y_formats": [ "mbytes" ],
-	    "grid": { "leftLogBase": 1, "leftMax": null, "leftMin": 0 },
+	    "grid": {},
 	    "gridPos": { "w": 12, "h": 6, "x": 0, "y": 0 },
 	    "span": 6,
 	    "legend": {
 		"show": true,
 		"values": true, "avg": true, "max": true, "min": true, "current": false, "total": false,
-		"rightSide": true, "alignAsTable": true, "sideWidth": 300,
+		"rightSide": true, "alignAsTable": true, "sideWidth": 350,
 		"hideEmpty": true, "hideZero": false
 	    },
 	    "targets": [ {
@@ -42,21 +39,63 @@
 		],
 		"select": [
 		    [
-			{ "type": "field", "params": [ "disk_total" ] },
+			{ "type": "field", "params": [ "disk-total" ] },
 			{ "type": "mean",  "params": [] },
 			{ "type": "alias", "params": [ "total size" ] }
 		    ],
 		    [
-			{ "type": "field", "params": [ "disk_avail" ] },
+			{ "type": "field", "params": [ "disk-avail" ] },
 			{ "type": "mean",  "params": [] },
-			{ "type": "alias", "params": [ "available size" ] }
+			{ "type": "alias", "params": [ "avail size" ] }
+		    ],
+		    [
+			{ "type": "field", "params": [ "disk-avail-pct" ] },
+			{ "type": "mean",  "params": [] },
+			{ "type": "alias", "params": [ "avail%" ] }
+		    ],
+		    [
+			{ "type": "field", "params": [ "disk-avail-pct.warn_lower" ] },
+			{ "type": "mean",  "params": [] },
+			{ "type": "alias", "params": [ "warn" ] }
+		    ],
+		    [
+			{ "type": "field", "params": [ "disk-avail-pct.crit_lower" ] },
+			{ "type": "mean",  "params": [] },
+			{ "type": "alias", "params": [ "crit" ] }
 		    ]
 		]
 	    } ],
-	    "nullPointMode": "connected"
+	    "nullPointMode": "connected",
+	    "yaxes": [
+		{
+		    "show": true,
+		    "min": 0, "max": null, "format": "mbytes"
+ 		},
+		{
+		    "show": true,
+		    "min": "0", "max": "100", "format": "percent"
+		}
+	    ],
+	    "seriesOverrides": [
+		{
+		    "alias": "avail%",
+		    "fill": 0,
+		    "yaxis": 2
+		},
+		{
+		    "alias": "crit",
+		    "fill": 0,
+		    "yaxis": 2
+		},
+		{
+		    "alias": "warn",
+		    "fill": 0,
+		    "yaxis": 2
+		}
+	    ]
 	},
 	{
-	    "title": "Disk available % of [%targetname%]:[%target%]",
+	    "title": "Disk \"[%target%]\" i-Nodes in [%hostname%]",
 	    "id": [%serial%],
 	    "datasource": "[%GRAFANADATASOURCE%]",
 	    "isNew": true,
@@ -65,74 +104,13 @@
 	    "type": "graph",
 	    "x-axis": true,
 	    "y-axis": true,
-	    "y_formats": [ "percent" ],
-	    "grid": { "leftLogBase": 1, "leftMax": 100, "leftMin": 0 },
+	    "grid": {},
 	    "gridPos": { "w": 12, "h": 6, "x": 0, "y": 0 },
 	    "span": 6,
 	    "legend": {
 		"show": true,
 		"values": true, "avg": true, "max": true, "min": true, "current": false, "total": false,
-		"rightSide": true, "alignAsTable": true, "sideWidth": 300,
-		"hideEmpty": true, "hideZero": false
-	    },
-	    "targets": [ {
-		"refId": "0001",
-		"dsType": "influxdb",
-		"resultFormat": "time_series",
-		"refId": "A",
-		"measurement": "[%measurement%]",
-		"alias": "$col",
-		"groupBy": [ { "type": "time", "params": [ "$__interval" ] } ],
-		"tags": [
-		    { "key": "hostname", "operator": "=", "value": "[%hostname%]" },
-		    { "key": "disk",     "operator": "=", "value": "[%target%]" }
-		],
-		"select": [
-		    [
-			{ "type": "field", "params": [ "disk_avail_pct" ] },
-			{ "type": "mean",  "params": [] },
-			{ "type": "alias", "params": [ "available %" ] }
-		    ],
-		    [
-			{ "type": "field", "params": [ "disk_avail_pct.warn_lower" ] },
-			{ "type": "mean",  "params": [] },
-			{ "type": "alias", "params": [ "warning" ] }
-		    ],
-		    [
-			{ "type": "field", "params": [ "disk_avail_pct.crit_lower" ] },
-			{ "type": "mean",  "params": [] },
-			{ "type": "alias", "params": [ "critical" ] }
-		    ]
-		]
-	    } ],
-	    "nullPointMode": "connected"
-	}
-    ]
-},
-{
-    "title": "Row",
-    "collapse": false,
-    "editable": true,
-    "height": "250px",
-    "panels": [
-	{
-	    "title": "Disk [%target%] i-node in [%targetname%]",
-	    "id": [%serial%],
-	    "datasource": "[%GRAFANADATASOURCE%]",
-	    "isNew": true,
-	    "editable": true,
-	    "tooltip": { "shared": true, "value_type": "individual" },
-	    "type": "graph",
-	    "x-axis": true,
-	    "y-axis": true,
-	    "y_formats": [ "short" ],
-	    "grid": { "leftLogBase": 1, "leftMax": null, "leftMin": 0 },
-	    "gridPos": { "w": 12, "h": 6, "x": 0, "y": 0 },
-	    "span": 6,
-	    "legend": {
-		"show": true,
-		"values": true, "avg": true, "max": true, "min": true, "current": false, "total": false,
-		"rightSide": true, "alignAsTable": true, "sideWidth": 300,
+		"rightSide": true, "alignAsTable": true, "sideWidth": 350,
 		"hideEmpty": true, "hideZero": false
 	    },
 	    "targets": [ {
@@ -149,67 +127,60 @@
 		],
 		"select": [
 		    [
-			{ "type": "field", "params": [ "disk_itotal" ] },
+			{ "type": "field", "params": [ "disk-itotal" ] },
 			{ "type": "mean",  "params": [] },
 			{ "type": "alias", "params": [ "total size" ] }
 		    ],
 		    [
-			{ "type": "field", "params": [ "disk_iavail" ] },
+			{ "type": "field", "params": [ "disk-iavail" ] },
 			{ "type": "mean",  "params": [] },
-			{ "type": "alias", "params": [ "available size" ] }
+			{ "type": "alias", "params": [ "avail size" ] }
+		    ],
+		    [
+			{ "type": "field", "params": [ "disk-iavail-pct" ] },
+			{ "type": "mean",  "params": [] },
+			{ "type": "alias", "params": [ "avail%" ] }
+		    ],
+		    [
+			{ "type": "field", "params": [ "disk-iavail-pct.warn_lower" ] },
+			{ "type": "mean",  "params": [] },
+			{ "type": "alias", "params": [ "warn" ] }
+		    ],
+		    [
+			{ "type": "field", "params": [ "disk-iavail-pct.crit_lower" ] },
+			{ "type": "mean",  "params": [] },
+			{ "type": "alias", "params": [ "crit" ] }
 		    ]
 		]
 	    } ],
-	    "nullPointMode": "connected"
-	},
-	{
-	    "title": "Disk [%target%] i-node available in [%targetname%]",
-	    "id": [%serial%],
-	    "datasource": "[%GRAFANADATASOURCE%]",
-	    "isNew": true,
-	    "editable": true,
-	    "tooltip": { "shared": true, "value_type": "individual" },
-	    "type": "graph",
-	    "x-axis": true,
-	    "y-axis": true,
-	    "y_formats": [ "percent" ],
-	    "grid": { "leftLogBase": 1, "leftMax": 100, "leftMin": 0 },
-	    "gridPos": { "w": 12, "h": 6, "x": 0, "y": 0 },
-	    "span": 6,
-	    "legend": {
-		"show": true,
-		"values": true, "avg": true, "max": true, "min": true, "current": false, "total": false,
-		"rightSide": true, "alignAsTable": true, "sideWidth": 300,
-		"hideEmpty": true, "hideZero": false
-	    },
-	    "targets": [ {
-		"refId": "0001",
-		"dsType": "influxdb",
-		"resultFormat": "time_series",
-		"refId": "A",
-		"measurement": "[%measurement%]",
-		"alias": "$col",
-		"groupBy": [ { "type": "time", "params": [ "$__interval" ] } ],
-		"tags": [%tags%],
-		"select": [
-		    [
-			{ "type": "field", "params": [ "disk_iavail_pct" ] },
-			{ "type": "mean",  "params": [] },
-			{ "type": "alias", "params": [ "available %" ] }
-		    ],
-		    [
-			{ "type": "field", "params": [ "disk_iavail_pct.warn_lower" ] },
-			{ "type": "mean",  "params": [] },
-			{ "type": "alias", "params": [ "warning" ] }
-		    ],
-		    [
-			{ "type": "field", "params": [ "disk_iavail_pct.crit_lower" ] },
-			{ "type": "mean",  "params": [] },
-			{ "type": "alias", "params": [ "critical" ] }
-		    ]
-		]
-	    } ],
-	    "nullPointMode": "connected"
+	    "nullPointMode": "connected",
+	    "yaxes": [
+		{
+		    "show": true, "label": "files",
+		    "min": 0, "max": null, "format": "short"
+ 		},
+		{
+		    "show": true,
+		    "min": "0", "max": "100", "format": "percent"
+		}
+	    ],
+	    "seriesOverrides": [
+		{
+		    "alias": "avail%",
+		    "fill": 0,
+		    "yaxis": 2
+		},
+		{
+		    "alias": "crit",
+		    "fill": 0,
+		    "yaxis": 2
+		},
+		{
+		    "alias": "warn",
+		    "fill": 0,
+		    "yaxis": 2
+		}
+	    ]
 	}
     ]
 }

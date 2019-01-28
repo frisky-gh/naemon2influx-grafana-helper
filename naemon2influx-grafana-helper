@@ -686,8 +686,8 @@ sub panelsseed2panelsobjlist (\%\%) {
 	my ($seeds, $additional_params) = @_;
 	my @rows;
 	my %panelid2info;
-	foreach my $id ( sort keys %$seeds ){
-		my $seed = $seeds->{$id};
+	foreach my $graph_id ( sort keys %$seeds ){
+		my $seed = $seeds->{$graph_id};
 		my $templatename = $seed->{template};
 		next if $templatename eq 'IGNORE';
 
@@ -719,7 +719,7 @@ sub panelsseed2panelsobjlist (\%\%) {
 				next unless $title;
 				$panelid2info{$panel_id} = {
 					'title' => $title,
-					'id' => $id,
+					'id' => $panel_id,
 					'performancenames' => $performancenames,
 				};
 			}
@@ -744,7 +744,7 @@ sub generate_tagsandkeys (\@\@) {
 	my %fieldkey2tagname;
 	foreach my $fieldkey ( @$fieldkeys ){
 		next if $fieldkey =~ m"\.\w+$";
-		foreach my $tagname_candidated ( split m"_+", $fieldkey ){
+		foreach my $tagname_candidated ( split m"-+", $fieldkey ){
 			next unless $tagname{$tagname_candidated};
 			$fieldkey2tagname{$fieldkey}->{$tagname_candidated} = 1;
 		}
@@ -764,7 +764,7 @@ sub generate_tagsandkeys (\@\@) {
 			next unless "@expected_tagnames" eq "@tagnames";
 
 			my @words;
-			foreach my $word ( split m"_", $fieldkey ){
+			foreach my $word ( split m"-", $fieldkey ){
 				if( $tagname{$word} ){
 					my $tagvalue = $tags->{$word};
 					push @words, "${word}[$tagvalue]";
@@ -772,7 +772,7 @@ sub generate_tagsandkeys (\@\@) {
 					push @words, $word;
 				}
 			}
-			my $performancename = join '_', @words;
+			my $performancename = join '-', @words;
 
 			push @{$fieldkeyslist[$i]}, $fieldkey;
 			push @{$performancenameslist[$i]}, $performancename;
@@ -783,7 +783,7 @@ sub generate_tagsandkeys (\@\@) {
 	for( my $i = 0; $i < @$tagslist; $i++ ){
 		push @tagsandkeys, [
 			$tagslist->[$i],
-			$fieldkeyslist[$i],
+			$fieldkeyslist[$i] // [@$fieldkeys],
 			$performancenameslist[$i]
 		];
 	}
