@@ -2,10 +2,10 @@
 .*		(.*)		 	generic  NEW
 .*		.+\.max		IGNORE
 .*		.+\.min		IGNORE
-.*		.+\.warn-upper		IGNORE
-.*		.+\.warn-lower		IGNORE
-.*		.+\.crit-upper		IGNORE
-.*		.+\.crit-lower		IGNORE
+.*		.+\.warn_upper		IGNORE
+.*		.+\.warn_lower		IGNORE
+.*		.+\.crit_upper		IGNORE
+.*		.+\.crit_lower		IGNORE
 .*		(.+-cnt)		gcounter NEW
 .*		(.+-pct)		gpercent NEW
 .*		(.+)-(.pm)		gpm	gpm:$1,$2,$tags_text target=$1 unit=$2
