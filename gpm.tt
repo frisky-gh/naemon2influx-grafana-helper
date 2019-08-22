@@ -34,7 +34,7 @@
 	    "alias": "$col",
 	    "groupBy": [ { "type": "time", "params": [ "$__interval" ] } ],
 	    "measurement": "[%measurement%]",
-	    "tags": [%tags%],
+	    "tags": [],
 	    "select": [
 		[ { "type": "field", "params": [ "[%target%]_[%unit%].warn_upper" ] },
 		  { "type": "mean",  "params": [] },
@@ -81,7 +81,7 @@
 	    "alias": "$col",
 	    "groupBy": [ { "type": "time", "params": [ "$__interval" ] } ],
 	    "measurement": "[%measurement%]",
-	    "tags": [%tags%],
+	    "tags": [],
 	    "select": [
 		[ { "type": "field", "params": [ "[%target%]_longtermavg_[%unit%].warn_upper" ] },
 		  { "type": "mean",  "params": [] },

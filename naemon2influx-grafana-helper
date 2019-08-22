@@ -7,7 +7,7 @@ use URI::Query;
 use HTTP::Daemon;
 use HTTP::Status;
 use LWP::UserAgent;
-use JSON;
+use JSON::XS;
 use Template;
 use strict;
 
@@ -134,13 +134,14 @@ sub read_helper_rules () {
 	};
 	while (<$h>) {
 		next if m"^\s*(#|$)";
-		die "$filename:$.: illegal format, stopped" unless m"^(\S+)\s+(\S+)\s+(\S+)(?:\s+(\S+)(?:\s+(\w+=\S*(?:\s+\w+=\S*)*))?)?\s*$";
+		unless( m"^(\S+)\s+(\S+)\s+(\S+)(?:\s+(\w+=\S*(?:\s+\w+=\S*)*)?)?\s*$" ){
+			die "$filename:$.: illegal format, stopped";
+		}
 		my $series_re = qr"^$1$";
 		my $field_re = qr"^$2$";
 		my $template = $3;
-		my $graphid = $4;
-		my $graphparams = $5;
-		push @rules, [$series_re, $field_re, $template, $graphid, $graphparams];
+		my $graphparams = $4;
+		push @rules, [$series_re, $field_re, $template, $graphparams];
 	}
 	close $h or do {
 		die "close failed for $filename: $OS_ERROR, stopped";
@@ -249,9 +250,9 @@ sub cmp_urlmap (\%\%) {
 	return @r;
 }
 
-sub read_all_series_cache () {
+sub read_all_measurements_from_cache () {
 	my %cache;
-	my $filename = "$CACHEDIR/naemon2influx-grafana-helper.all_series";
+	my $filename = "$CACHEDIR/naemon2influx-grafana-helper.measurements";
 	open my $h, '<', "$filename" or do {
 		#die "cannot open $filename: $OS_ERROR, stopped";
 		return ();
@@ -266,9 +267,9 @@ sub read_all_series_cache () {
 	return sort keys %cache;
 }
 
-sub write_all_series_cache (\@) {
+sub write_all_measurements_to_cache (\@) {
 	my ($cache) = @_;
-	my $filename = "$CACHEDIR/naemon2influx-grafana-helper.all_series";
+	my $filename = "$CACHEDIR/naemon2influx-grafana-helper.measurements";
 	open my $h, '>', "$filename" or do {
 		die "cannot open $filename: $OS_ERROR, stopped";
 	};
@@ -281,25 +282,23 @@ sub write_all_series_cache (\@) {
 	return;
 }
 
-sub cmp_all_series (\@\@) {
+sub cmp_all_measurements (\@\@) {
 	my ($left, $right) = @_;
 	my %c;
 	foreach my $i ( @$left ) { $c{$i} |= 1; }
 	foreach my $i ( @$right ){ $c{$i} |= 2; }
 	my %d;
-	while( my ($i, $r) = each %c ){
+	while( my ($m, $r) = each %c ){
 		next if $r == 3;
-		my ($m, %tags) = series2measurementandtags ($i);
-		my $j = $tags{hostname} . ',' . $m;
-		$d{$j} = 1;
+		$d{$m} = 1;
 	}
 	return sort keys %d;
 }
 
-sub service2measurement ($$) {
-	my ($config, $service ) = @_;
+sub hostservice2measurement ($$$) {
+	my ($config, $host, $service) = @_;
 	my $global_prefix = $config->{'global_prefix'};
-	my $measurement = $global_prefix eq '' ? $service : "$global_prefix.$service";
+	my $measurement = $global_prefix eq '' ? "$host.$service" : "$global_prefix.$host.$service";
 	my $separator = $config->{'separator'};
 	$measurement =~ s/ /$separator/g;
 	my $trimpattern = $config->{'trimpattern'};
@@ -394,9 +393,9 @@ sub register_dashboard_to_grafana ($$$;$) {
 	return $r;
 }
 
-sub read_all_series_from_influxdb ($) {
+sub read_all_measurements_from_influxdb ($) {
 	my ($n2iconf) = @_;
-	my $q = "show series";
+	my $q = "show measurements";
 	my $res = query_to_influxdb $n2iconf, $q;
 	unless ($res->is_success) {
 		printf "query: %s\n", $q;
@@ -405,49 +404,19 @@ sub read_all_series_from_influxdb ($) {
 	}
 
 	my $json = decode_json $res->decoded_content;
-	my $series = $json->{'results'}->[0]->{'series'}->[0]->{'values'};
-	my %series;
+	my $measurements = $json->{'results'}->[0]->{'series'}->[0]->{'values'};
+	my %measurements;
 	my $global_prefix = $n2iconf->{global_prefix} . ".";
 	my $global_prefix_length = length $global_prefix;
-	foreach my $i ( @$series ){
-		my $s = $i->[0];
-		my ($m, %tags) = series2measurementandtags $s;
+	foreach my $i ( @$measurements ){
+		my $m = $i->[0];
 		if( $global_prefix ){
 			next unless substr($m, 0, $global_prefix_length) eq $global_prefix;
 			$m = substr($m, $global_prefix_length);
 		}
-		foreach my $hiddentag ( 'state' ){
-			delete $tags{$hiddentag};
-		}
-		$s = measurementandtags2series $m, %tags;
-		$series{$s} = 1;
+		$measurements{$m} = 1;
 	}
-	return sort keys %series;
-}
-
-sub read_tags_from_influxdb ($$$) {
-	my ($config, $measurement, $hostname ) = @_;
-	my $q = "show series from \"$measurement\"";
-	my $res = query_to_influxdb $config, $q;
-	unless ($res->is_success) {
-		printf "query: %s\n", $q;
-		printf "code: %s\nmessage: %s\n", $res->code, $res->message;
-	}
-
-	my $json = decode_json $res->decoded_content;
-	my $series = $json->{'results'}->[0]->{'series'}->[0]->{'values'};
-	my %series;
-	foreach my $i ( @$series ){
-		my $s = $i->[0];
-		my ($m, %tags) = series2measurementandtags $s;
-		next unless $tags{'hostname'} eq $hostname;
-		foreach my $hiddentag ( 'state' ){
-			delete $tags{$hiddentag};
-		}
-		$s = measurementandtags2series $m, %tags;
-		$series{$s} = \%tags;
-	}
-	return values %series;
+	return sort keys %measurements;
 }
 
 sub read_fieldkeys_from_influxdb ($$) {
@@ -468,28 +437,6 @@ sub read_fieldkeys_from_influxdb ($$) {
 		printf "query: %s\n", $q;
 		printf "code: %s\nmessage: %s\n", $res->code, $res->message;
 	}
-}
-
-sub read_fieldlastvalues_from_influxdb ($$) {
-#	my ($config, $service ) = @_;
-#	my $measurement = service2measurement %$config, $service;
-#	my $q = "show field keys from \"$measurement\"";
-#	my $res = query_to_influxdb %$config, $q;
-#	if ($res->is_success) {
-#		my $h = decode_json $res->decoded_content;
-#		my $json = decode_json $res->decoded_content;
-#		my $series = $json->{'results'}->[0]->{'series'}->[0]->{'values'};
-#		my @fieldkeys;
-#		foreach my $i ( @$series ){
-#			next unless $i->[1] eq 'float';
-#			push @fieldkeys, $i->[0];
-#		}
-#		return @fieldkeys;
-#	}
-#	else {
-#		printf "query: %s\n", $q;
-#		printf "code: %s\nmessage: %s\n", $res->code, $res->message;
-#	}
 }
 
 sub expand_matches ($\%\@) {
@@ -561,104 +508,70 @@ sub expand_params ($$) {
 ####
 
 sub generate_panelsseed (\@$\@) {
-	my ($rules, $measurement, $tagsandkeys) = @_;
-	my %srcs;
-	my $autoid = 'id0000';
-	foreach my $tags_fieldkeys ( @$tagsandkeys ){
-		my $tags = $tags_fieldkeys->[0];
-		my $fieldkeys = $tags_fieldkeys->[1];
-		my $performancenames = $tags_fieldkeys->[2];
-		my $series = measurementandtags2series $measurement, %$tags;
-		##
-		my @tags_text;
-		my @tags_json;
-		my @tags_where;
-		foreach my $k ( sort keys %$tags ){
-			my $v = $tags->{$k};
-			push @tags_text, "$k=$v" unless $k eq 'hostname';
-			push @tags_json, "{\"key\":\"$k\",\"operator\":\"=\",\"value\":\"$v\"}";
-			push @tags_where, "\\\"$k\\\" = '$v'";
-		}
-		my $tags_text = join ',', @tags_text;
-		my $tags_json = '[' . join( ',', @tags_json ) . ']';
-		my $tags_where = join ' and ', @tags_where, '$timeFilter';
-		##
-		for( my $j = 0; $j < @$fieldkeys; $j++ ){
-			my $fieldkey = $fieldkeys->[$j];
-			my $performancename = $performancenames->[$j];
-			my $template;
-			my $graphid;
-			my %params;
+	my ($rules, $measurement, $fieldkeys) = @_;
+	my %exists;
+	my %seeds;
 
-			foreach my $rule ( @$rules ){
-				my $series_re = $rule->[0];
-				my @m1 = $series =~ m"$series_re";
-				next unless @m1;
-				shift @m1 if $#+ == 0;
+	##
+	for( my $j = 0; $j < @$fieldkeys; $j++ ){
+		my $fieldkey = $fieldkeys->[$j];
+		my $template;
+		my %params;
+		my @params;
 
-				my $field_re = $rule->[1];
-				my @m2 = $fieldkey =~ m"$field_re";
-				next unless @m2;
-				shift @m2 if $#+ == 0;
+		foreach my $rule ( @$rules ){
+			my $measurement_re = $rule->[0];
+			my @m1 = $measurement =~ m"$measurement_re";
+			next unless @m1;
+			shift @m1 if $#+ == 0;
 
-				$template = $rule->[2];
-				if( $template eq 'IGNORE' ){
-					$graphid = undef;
-					next;
-				}
-				my @m = ($fieldkey, @m1, @m2);
+			my $field_re = $rule->[1];
+			my @m2 = $fieldkey =~ m"$field_re";
+			next unless @m2;
+			shift @m2 if $#+ == 0;
 
-				my %p = (
-					'fieldkey'    => $fieldkey,
-					'series'      => $series,
-					'measurement' => $measurement,
-					'tags'        => $tags_json,
-					'tags_text'   => $tags_text,
-					'tags_json'   => $tags_json,
-					'tags_where'  => $tags_where,
-				);
+			$template = $rule->[2];
+			next if $template eq 'IGNORE';
 
-				$graphid = expand_matches $rule->[3], %p, @m;
+			my @m = ($fieldkey, @m1, @m2);
 
-				foreach my $i ( split m"\s+", $rule->[4] ){
-					die "$i, stopped" unless $i =~ m"^(\w+)=(.*)$";
-					my $k = $1;
-					my $v = $2;
-					$params{$k} = expand_matches $v, %p, @m;
-				}
-			}
+			my %p = (
+				'fieldkey'    => $fieldkey,
+				'measurement' => $measurement,
+			);
 
-			$graphid = '' if $template eq 'IGNORE';
-
-			if( $graphid eq 'NEW' ){
-				$graphid = $autoid;
-				$autoid++;
-			}
-			unless( exists $srcs{$graphid} ){
-				$srcs{$graphid} = {
-					'template' => undef,
-					'params' => {},
-					'keys' => []
-				};
-			}
-			my $s = $srcs{$graphid};
-			push @{$s->{'fieldkeys'}}, "$series $fieldkey";
-			push @{$s->{'performancenames'}}, $performancename;
-			$s->{'template'} = $template;
-			$s->{'params'}->{'fieldkey'} = $fieldkey;
-			$s->{'params'}->{'series'} = $series;
-			$s->{'params'}->{'measurement'} = $measurement;
-			$s->{'params'}->{'tags'} = $tags_json;
-			$s->{'params'}->{'tags_text'} = $tags_text;
-			$s->{'params'}->{'tags_json'} = $tags_json;
-			$s->{'params'}->{'tags_where'} = $tags_where;
-			$s->{'params'}->{'graphid'}  = $graphid;
-			while( my ($k, $v) = each %params ){
-				$s->{'params'}->{$k} = $v;
+			%params = ();
+			@params = ();
+			foreach my $i ( split m"\s+", $rule->[3] ){
+				die "$i, stopped" unless $i =~ m"^(\w+)=(.*)$";
+				my $k = $1;
+				my $v = $2;
+				my $v2 = expand_matches $v, %p, @m;
+				$params{$k} = $v2;
+				push @params, "$k=$v2";
 			}
 		}
+
+		next if $template eq 'IGNORE';
+		my $graphid = join ',', $template, @params;
+		if( exists $seeds{$graphid} ){
+			my $s = $seeds{$graphid};
+			push @{$s->{'fieldkeys'}}, $fieldkey;
+			next;
+		}
+		my $s = {
+			'fieldkeys'        => [ $fieldkey ],
+			'template' => $template,
+			'params' => {
+				'fieldkey'	=> $fieldkey,
+				'measurement'	=> $measurement,
+				'graphid'	=> $graphid,
+				%params,
+			},
+		};
+		$seeds{$graphid} = $s;
 	}
-	return %srcs;
+	return %seeds;
 }
 
 sub debuglog_panelsseed (%) {
@@ -672,11 +585,9 @@ sub debuglog_panelsseed (%) {
 		my $template = $seed{$graphid}->{template};
 		next if $template eq 'IGNORE';
 		debuglog "graphid=%s template=%s", $graphid, $template;
-		my $performancenames = $seed{$graphid}->{performancenames};
 		my $fieldkeys = $seed{$graphid}->{fieldkeys};
 		for( my $i = 0; $i < @$fieldkeys; $i++ ){
-			debuglog "	performancename:%s, fieldkey:%s",
-				$performancenames->[$i], $fieldkeys->[$i];
+			debuglog "	fieldkey:%s", $fieldkeys->[$i];
 		}
 	}
 
@@ -706,7 +617,7 @@ sub panelsseed2panelsobjlist (\%\%) {
 			die "$templatename: cannot validate, stopped";
 		}
 
-		my $performancenames = $seed->{performancenames};
+		my $fieldkeys = $seed->{fieldkeys};
 		foreach my $row ( @$obj ){
 			my $panels = $row->{panels};
 			unless( $panels ){
@@ -720,7 +631,7 @@ sub panelsseed2panelsobjlist (\%\%) {
 				$panelid2info{$panel_id} = {
 					'title' => $title,
 					'id' => $panel_id,
-					'performancenames' => $performancenames,
+					'performancenames' => $fieldkeys,
 				};
 			}
 		}
@@ -730,70 +641,9 @@ sub panelsseed2panelsobjlist (\%\%) {
 	return \@rows, \%panelid2info;
 }
 
-sub generate_tagsandkeys (\@\@) {
-	my ($tagslist, $fieldkeys) = @_;
-
-	my %tagname;
-	foreach my $tags ( @$tagslist ){
-		while( my ($tagname, $v) = each %$tags ){
-			next if $tagname eq 'hostname';
-			$tagname{$tagname} = 1;
-		}
-	}
-
-	my %fieldkey2tagname;
-	foreach my $fieldkey ( @$fieldkeys ){
-		next if $fieldkey =~ m"\.\w+$";
-		foreach my $tagname_candidated ( split m"-+", $fieldkey ){
-			next unless $tagname{$tagname_candidated};
-			$fieldkey2tagname{$fieldkey}->{$tagname_candidated} = 1;
-		}
-	}
-
-	my @fieldkeyslist;
-	my @performancenameslist;
-
-	foreach my $fieldkey ( @$fieldkeys ){
-		my @expected_tagnames = sort (
-			'hostname',
-			keys %{$fieldkey2tagname{$fieldkey}}
-		);
-		for( my $i = 0; $i < @$tagslist; $i++ ){
-			my $tags = $tagslist->[$i];
-			my @tagnames = sort keys %$tags;
-			next unless "@expected_tagnames" eq "@tagnames";
-
-			my @words;
-			foreach my $word ( split m"-", $fieldkey ){
-				if( $tagname{$word} ){
-					my $tagvalue = $tags->{$word};
-					push @words, "${word}[$tagvalue]";
-				}else{
-					push @words, $word;
-				}
-			}
-			my $performancename = join '-', @words;
-
-			push @{$fieldkeyslist[$i]}, $fieldkey;
-			push @{$performancenameslist[$i]}, $performancename;
-		}
-	}
-
-	my @tagsandkeys;
-	for( my $i = 0; $i < @$tagslist; $i++ ){
-		push @tagsandkeys, [
-			$tagslist->[$i],
-			$fieldkeyslist[$i] // [@$fieldkeys],
-			$performancenameslist[$i]
-		];
-	}
-
-	return @tagsandkeys;
-}
-
 sub generate_panelsobjlist ($$$$$) {
 	my ($n2iconf, $rules, $hostname, $servicedesc, $grafanadatasource) = @_;
-	my $measurement = service2measurement $n2iconf, $servicedesc;
+	my $measurement = hostservice2measurement $n2iconf, $hostname, $servicedesc;
 	my %additional_params = (
 		'hostname' => $hostname,
 		'servicedesc' => $servicedesc,
@@ -801,11 +651,7 @@ sub generate_panelsobjlist ($$$$$) {
 		'GRAFANADATASOURCE' => $grafanadatasource,
 	);
 	my @keys = read_fieldkeys_from_influxdb $n2iconf, $measurement; 
-	my @tagslist = read_tags_from_influxdb $n2iconf, $measurement, $hostname; 
-
-	my @tagsandkeys = generate_tagsandkeys @tagslist, @keys;
-
-	my %seed = generate_panelsseed @$rules, $measurement, @tagsandkeys;
+	my %seed = generate_panelsseed @$rules, $measurement, @keys;
 	debuglog_panelsseed %seed;
 	my ($objlist, $panelid2info) = panelsseed2panelsobjlist
 		%seed, %additional_params;
@@ -816,21 +662,25 @@ sub generate_panelsobjlist ($$$$$) {
 sub cmd_cron ($$$) {
 	my ($conf, $n2iconf, $rules) = @_;
 	my $grafanadatasource = $conf->{'GRAFANADATASOURCE'};
-	my @last_series = read_all_series_cache; 
-	my @curr_series = read_all_series_from_influxdb $n2iconf; 
+	my @last_measurements = read_all_measurements_from_cache; 
+	my @curr_measurements = read_all_measurements_from_influxdb $n2iconf; 
 	my %last_map = read_urlmap; 
 	my %curr_map = %last_map;
-	my @series_diff = cmp_all_series @curr_series, @last_series;
-	if( @series_diff ){
-		foreach my $diff ( @series_diff ){
-			my ($host, $service) = split m",", $diff;
+	my @measurements_diff = cmp_all_measurements @curr_measurements, @last_measurements;
+	if( @measurements_diff ){
+		foreach my $diff ( @measurements_diff ){
+			$diff =~ m"^(.+)\.([-\w]+)$" or do {
+				die "$diff: illegal measurment name, stopped";
+			};
+			my $host = $1;
+			my $service = $2;
 			my ($objlist, $id2info) = generate_panelsobjlist
 				$n2iconf, $rules, $host, $service, $grafanadatasource;
 			my $json = encode_json $objlist;
 			my @tags = ($host, $service);
 			my $r = register_dashboard_to_grafana $conf, "$host, $service", $json, \@tags;
 			$curr_map{"$host,$service"} = {
-				'host_service' => $diff,
+				'host_service' => "$host,$service",
 				'host'    => $host,
 				'service' => $service,
 				'dashboard_uid'  => $r->{uid},
@@ -839,7 +689,7 @@ sub cmd_cron ($$$) {
 				'panels'  => $id2info,
 			};
 		}
-		write_all_series_cache @curr_series;
+		write_all_measurements_to_cache @curr_measurements;
 	}
 	my @map_diff = cmp_urlmap %curr_map, %last_map;
 	if( @map_diff ){

@@ -1,7 +1,4 @@
 //// Memory
-[%- targetname = sub(hostname, "/.*$", "") %]
-[%- targettype = sub(hostname, "^.*/", "") %]
-[%- detectorname = sub(servicedesc, "^.*_", "") %]
 {
     "title": "Row",
     "collapse": false,
@@ -34,7 +31,7 @@
 	    "alias": "$col",
 	    "groupBy": [ { "type": "time", "params": [ "$__interval" ] } ],
             "measurement": "[%measurement%]",
-            "tags": [ { "key": "hostname", "operator": "=", "value": "[%hostname%]" } ],
+            "tags": [],
             "select": [
                 [ { "type": "field", "params": [ "mem-total" ] },
 		  { "type": "mean",  "params": [] },

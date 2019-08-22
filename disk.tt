@@ -33,33 +33,30 @@
 		"measurement": "[%measurement%]",
 		"alias": "$col",
 		"groupBy": [ { "type": "time", "params": [ "$__interval" ] } ],
-		"tags": [
-		    { "key": "hostname", "operator": "=", "value": "[%hostname%]" },
-		    { "key": "disk", "operator": "=", "value": "[%target%]" }
-		],
+		"tags": [],
 		"select": [
 		    [
-			{ "type": "field", "params": [ "disk-total" ] },
+			{ "type": "field", "params": [ "disk[[%target%]]-total" ] },
 			{ "type": "mean",  "params": [] },
 			{ "type": "alias", "params": [ "total size" ] }
 		    ],
 		    [
-			{ "type": "field", "params": [ "disk-avail" ] },
+			{ "type": "field", "params": [ "disk[[%target%]]-avail" ] },
 			{ "type": "mean",  "params": [] },
 			{ "type": "alias", "params": [ "avail size" ] }
 		    ],
 		    [
-			{ "type": "field", "params": [ "disk-avail-pct" ] },
+			{ "type": "field", "params": [ "disk[[%target%]]-avail-pct" ] },
 			{ "type": "mean",  "params": [] },
 			{ "type": "alias", "params": [ "avail%" ] }
 		    ],
 		    [
-			{ "type": "field", "params": [ "disk-avail-pct.warn_lower" ] },
+			{ "type": "field", "params": [ "disk[[%target%]]-avail-pct.warn_lower" ] },
 			{ "type": "mean",  "params": [] },
 			{ "type": "alias", "params": [ "warn" ] }
 		    ],
 		    [
-			{ "type": "field", "params": [ "disk-avail-pct.crit_lower" ] },
+			{ "type": "field", "params": [ "disk[[%target%]]-avail-pct.crit_lower" ] },
 			{ "type": "mean",  "params": [] },
 			{ "type": "alias", "params": [ "crit" ] }
 		    ]
@@ -121,33 +118,30 @@
 		"measurement": "[%measurement%]",
 		"alias": "$col",
 		"groupBy": [ { "type": "time", "params": [ "$__interval" ] } ],
-		"tags": [
-		{ "key": "hostname", "operator": "=", "value": "[%hostname%]" },
-		{ "key": "disk", "operator": "=", "value": "[%target%]" }
-		],
+		"tags": [],
 		"select": [
 		    [
-			{ "type": "field", "params": [ "disk-itotal" ] },
+			{ "type": "field", "params": [ "disk[[%target%]]-itotal" ] },
 			{ "type": "mean",  "params": [] },
 			{ "type": "alias", "params": [ "total size" ] }
 		    ],
 		    [
-			{ "type": "field", "params": [ "disk-iavail" ] },
+			{ "type": "field", "params": [ "disk[[%target%]]-iavail" ] },
 			{ "type": "mean",  "params": [] },
 			{ "type": "alias", "params": [ "avail size" ] }
 		    ],
 		    [
-			{ "type": "field", "params": [ "disk-iavail-pct" ] },
+			{ "type": "field", "params": [ "disk[[%target%]]-iavail-pct" ] },
 			{ "type": "mean",  "params": [] },
 			{ "type": "alias", "params": [ "avail%" ] }
 		    ],
 		    [
-			{ "type": "field", "params": [ "disk-iavail-pct.warn_lower" ] },
+			{ "type": "field", "params": [ "disk[[%target%]]-iavail-pct.warn_lower" ] },
 			{ "type": "mean",  "params": [] },
 			{ "type": "alias", "params": [ "warn" ] }
 		    ],
 		    [
-			{ "type": "field", "params": [ "disk-iavail-pct.crit_lower" ] },
+			{ "type": "field", "params": [ "disk[[%target%]]-iavail-pct.crit_lower" ] },
 			{ "type": "mean",  "params": [] },
 			{ "type": "alias", "params": [ "crit" ] }
 		    ]

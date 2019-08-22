@@ -31,7 +31,7 @@
 	    "alias": "$col",
 	    "groupBy": [ { "type": "time", "params": [ "$__interval" ] } ],
 	    "measurement": "[%measurement%]",
-	    "tags": [ { "key": "hostname", "operator": "=", "value": "[%hostname%]" } ],
+	    "tags": [],
 	    "select": [
 		[ { "type": "field", "params": [ "[%target%]-total" ] },
 		  { "type": "mean", "params": [] },

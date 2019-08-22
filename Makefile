@@ -5,7 +5,7 @@ UPSTREAM_PACKAGE=naemon2influx-grafana-helper_$(VERSION).orig.tar.gz
 DESTDIR=	
 
 TEMPLATEDIR=	/etc/naemon/naemon2influx-grafana-helper.d
-TEMPLATES=	generic.tt gcounter.tt gpercent.tt gvolume.tt cpu.tt mem.tt disk.tt naemon2influx-grafana-helper.tt
+TEMPLATES=	generic.tt gcounter.tt gpercent.tt gvolume.tt gpm.tt cpu.tt mem.tt disk.tt dev.tt port.tt link.tt naemon2influx-grafana-helper.tt
 
 all:	build
 
@@ -22,6 +22,8 @@ install:
 	install -m 0644 naemon2influx-grafana-helper.conf ${DESTDIR}/etc/naemon
 	install -m 0644 naemon2influx-grafana-helper.rules ${DESTDIR}/etc/naemon
 	install -m 0644 ${TEMPLATES} ${DESTDIR}/etc/naemon/naemon2influx-grafana-helper.d
+	mkdir -p ${DESTDIR}/etc/cron.hourly
+	install -m 0644 -T cron.hourly ${DESTDIR}/etc/cron.hourly/naemon2influx-grafana-helper
 	mkdir -p ${DESTDIR}/usr/share/grafana/public/dashboards ${DESTDIR}/var/cache/naemon
 	ln -s /var/cache/naemon/naemon2influx-grafana-helper.js ${DESTDIR}/usr/share/grafana/public/dashboards/naemon2influx-grafana-helper.js
 

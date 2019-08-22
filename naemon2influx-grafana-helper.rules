@@ -1,24 +1,23 @@
-# series	field		  	template graphID	 params
-.*		(.*)		 	generic  NEW
-.*		.+\.max		IGNORE
-.*		.+\.min		IGNORE
+# measurement	field		  	template	params
+.*		(.*)		 	generic 	field=$1
+.*		.+\.max			IGNORE
+.*		.+\.min			IGNORE
 .*		.+\.warn_upper		IGNORE
 .*		.+\.warn_lower		IGNORE
 .*		.+\.crit_upper		IGNORE
 .*		.+\.crit_lower		IGNORE
-.*		(.+-cnt)		gcounter NEW
-.*		(.+-pct)		gpercent NEW
-.*		(.+)-(.pm)		gpm	gpm:$1,$2,$tags_text target=$1 unit=$2
-.*		(.+)-longtermavg-(.pm)	gpm	gpm:$1,$2,$tags_text target=$1 unit=$2
-.*		(.+)-(total|used|free|avail) gvolume gvolume:$1,$tags_text target=$1
+.*		(.+)-cnt		gcounter	target=$1
+.*		(.+)-pct		gpercent	target=$1
+.*		(.+)-(.pm)		gpm		target=$1 unit=$2
+.*		(.+)-(total|used|free|avail) gvolume	target=$1
 
-.*		cpu-.+		 	cpu	cpu
-.*		mem-.+		 	mem	mem
-.*,disk=([^,]+).*	.+		disk 	disk:$1		target=$1
-.*,link=([^,]+).*	.+		link	link:$1		target=$1
-.*,port=([^,]+).*	.+		netconn	netconn:$1	target=$1
-.*,proc=([^,]+).*	.+		proc 	proc:$1 	target=$1
-.*,dev=([^,]+).*	.+		deviopm	deviopm:$1	target=$1
+.*	cpu-.+				 	cpu
+.*	mem-.+				 	mem
+.*	disk\[([^,]+)\]-i?(total|avail|avail-pct) disk	target=$1
+.*	link\[([^,]+)\]-.x-(throughput|bytes|packets|dropped|errors|mcast|overrun|carrier|collsns)-(mbps|ppm|cnt)	link		target=$1
+.*	port\[([^,]+)\]-(conns|recvq|sendq)	port	target=$1
+.*		proc\[([^,]+)\]-.*	proc	 	target=$1
+.*	dev\[([^,]+)\]-(read|write)-(.pm)	dev	target=$1 unit=$3
 
 ####
 

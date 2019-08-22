@@ -31,7 +31,7 @@
 	    "alias": "$col",
 	    "groupBy": [ { "type": "time", "params": [ "$__interval" ] } ],
 	    "measurement": "[%measurement%]",
-	    "tags": [ { "key": "hostname", "operator": "=", "value": "[%hostname%]" } ],
+	    "tags": [],
 	    "select": [
 		[ { "type": "field", "params": [ "cpu-system-pct" ] },
 		  { "type": "mean",  "params": [] },
@@ -77,7 +77,7 @@
 	    "alias": "$col",
 	    "groupBy": [ { "type": "time", "params": [ "$__interval" ] } ],
 	    "measurement": "[%measurement%]",
-	    "tags": [ { "key": "hostname", "operator": "=", "value": "[%hostname%]" } ],
+	    "tags": [],
 	    "select": [
 		[ { "type": "field", "params": [ "cpu-idle-longtermavg-pct" ] },
 		  { "type": "mean",  "params": [] },

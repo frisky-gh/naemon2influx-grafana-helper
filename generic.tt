@@ -1,14 +1,11 @@
 //// Generic
-[%- attrs = sub(series, "^[^,]+,", ",") %]
-[%- attrs = sub(attrs, ",hostname=[^,]+(,|$)", ",") %]
-[%- attrs = sub(attrs, "^,", "") %]
 {
     "title": "Row",
     "collapse": false,
     "editable": true,
     "height": "250px",
     "panels": [ {
-	"title": "[%fieldkey%] [%attrs%] in [%hostname%] (Generic)",
+	"title": "[%fieldkey%] in [%hostname%] (Generic)",
 	"id": [%serial%],
 	"datasource": "[%GRAFANADATASOURCE%]",
 	"isNew": true,
@@ -34,7 +31,7 @@
 	    "alias": "$col",
 	    "groupBy": [ { "type": "time", "params": [ "$__interval" ] } ],
 	    "measurement": "[%measurement%]",
-	    "tags": [%tags%],
+	    "tags": [],
 	    "select": [
 		[ { "type": "field", "params": [ "[%fieldkey%].warn_upper" ] },
 		  { "type": "mean",  "params": [] },

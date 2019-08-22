@@ -1,8 +1,4 @@
 //// Process
-[%- attrs = sub(series, "^[^,]+,", ",") %]
-[%- attrs = sub(attrs, ",hostname=[^,]+(,|$)", ",") %]
-[%- attrs = sub(attrs, "^,", "") %]
-[%- attrs = sub(attrs, ",$", "") %]
 {
     "title": "Row",
     "collapse": false,
@@ -35,36 +31,36 @@
 	    "alias": "$col",
 	    "groupBy": [ { "type": "time", "params": [ "$__interval" ] } ],
 	    "measurement": "[%measurement%]",
-	    "tags": [%tags%],
+	    "tags": [],
 	    "select": [
-		[ { "type": "field", "params": [ "proc-procs.warn_upper" ] },
+		[ { "type": "field", "params": [ "proc[[%target%]]-procs.warn_upper" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "procs_warn_upper" ] } ],
-		[ { "type": "field", "params": [ "proc-procs.warn_lower" ] },
+		[ { "type": "field", "params": [ "proc[[%target%]]-procs.warn_lower" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "procs_warn_lower" ] } ],
-		[ { "type": "field", "params": [ "proc-procs.crit_upper" ] },
+		[ { "type": "field", "params": [ "proc[[%target%]]-procs.crit_upper" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "procs_crit_upper" ] } ],
-		[ { "type": "field", "params": [ "proc-procs.crit_lower" ] },
+		[ { "type": "field", "params": [ "proc[[%target%]]-procs.crit_lower" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "procs_crit_lower" ] } ],
-		[ { "type": "field", "params": [ "proc-procs" ] },
+		[ { "type": "field", "params": [ "proc[[%target%]]-procs" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "procs" ] } ],
-		[ { "type": "field", "params": [ "proc-threads.warn_upper" ] },
+		[ { "type": "field", "params": [ "proc[[%target%]]-threads.warn_upper" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "threads_warn_upper" ] } ],
-		[ { "type": "field", "params": [ "proc-threads.warn_lower" ] },
+		[ { "type": "field", "params": [ "proc[[%target%]]-threads.warn_lower" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "threads_warn_lower" ] } ],
-		[ { "type": "field", "params": [ "proc-threads.crit_upper" ] },
+		[ { "type": "field", "params": [ "proc[[%target%]]-threads.crit_upper" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "threads_crit_upper" ] } ],
-		[ { "type": "field", "params": [ "proc-threads.crit_lower" ] },
+		[ { "type": "field", "params": [ "proc[[%target%]]-threads.crit_lower" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "threads_crit_lower" ] } ],
-		[ { "type": "field", "params": [ "proc-threads" ] },
+		[ { "type": "field", "params": [ "proc[[%target%]]-threads" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "threads" ] } ]
 	    ]
