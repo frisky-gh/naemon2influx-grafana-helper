@@ -1,14 +1,11 @@
-//// Generic
-[%- attrs = sub(series, "^[^,]+,", ",") %]
-[%- attrs = sub(attrs, ",hostname=[^,]+(,|$)", ",") %]
-[%- attrs = sub(attrs, "^,", "") %]
+//// Generic Percentage
 {
     "title": "Row",
     "collapse": false,
     "editable": true,
     "height": "250px",
     "panels": [ {
-	"title": "[%fieldkey%] [%attrs%] in [%hostname%] - [%servicedesc%] (Generic Percentage)",
+	"title": "[%target%] % in [%hostname%] (Generic Percentage)",
 	"id": [%serial%],
 	"datasource": "[%GRAFANADATASOURCE%]",
 	"isNew": true,

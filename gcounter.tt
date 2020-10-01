@@ -1,14 +1,11 @@
-//// GCounter
-[%- attrs = sub(series, "^[^,]+,", ",") %]
-[%- attrs = sub(attrs, ",hostname=[^,]+(,|$)", ",") %]
-[%- attrs = sub(attrs, "^,", "") %]
+//// Generic Counter
 {
     "title": "Row",
     "collapse": false,
     "editable": true,
     "height": "250px",
     "panels": [ {
-	"title": "[%fieldkey%] [%attrs%] in [%hostname%] - [%servicedesc%] (Generic Counter)",
+	"title": "Counter [%target%] in [%hostname%] (Generic Counter)",
 	"id": [%serial%],
 	"datasource": "[%GRAFANADATASOURCE%]",
 	"isNew": true,

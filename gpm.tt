@@ -1,14 +1,11 @@
 //// Generic Per Minutes
-[%- attrs = sub(series, "^[^,]+,", ",") %]
-[%- attrs = sub(attrs, ",hostname=[^,]+(,|$)", ",") %]
-[%- attrs = sub(attrs, "^,", "") %]
 {
     "title": "Row",
     "collapse": false,
     "editable": true,
     "height": "250px",
     "panels": [ {
-	"title": "[%target%]_[%unit%] [%attrs%] in [%hostname%] (Generic Per Minutes)",
+	"title": "[%target%] [%unit%]/min in [%hostname%] (Generic Per Minutes)",
 	"id": [%serial%],
 	"datasource": "[%GRAFANADATASOURCE%]",
 	"isNew": true,
@@ -36,19 +33,19 @@
 	    "measurement": "[%measurement%]",
 	    "tags": [],
 	    "select": [
-		[ { "type": "field", "params": [ "[%target%]_[%unit%].warn_upper" ] },
+		[ { "type": "field", "params": [ "[%target%]-[%unit%].warn_upper" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "warn_upper" ] } ],
-		[ { "type": "field", "params": [ "[%target%]_[%unit%].warn_lower" ] },
+		[ { "type": "field", "params": [ "[%target%]-[%unit%].warn_lower" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "warn_lower" ] } ],
-		[ { "type": "field", "params": [ "[%target%]_[%unit%].crit_upper" ] },
+		[ { "type": "field", "params": [ "[%target%]-[%unit%].crit_upper" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "crit_upper" ] } ],
-		[ { "type": "field", "params": [ "[%target%]_[%unit%].crit_lower" ] },
+		[ { "type": "field", "params": [ "[%target%]-[%unit%].crit_lower" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "crit_lower" ] } ],
-		[ { "type": "field", "params": [ "[%target%]_[%unit%]" ] },
+		[ { "type": "field", "params": [ "[%target%]-[%unit%]" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "value" ] } ]
 	    ]
@@ -83,19 +80,19 @@
 	    "measurement": "[%measurement%]",
 	    "tags": [],
 	    "select": [
-		[ { "type": "field", "params": [ "[%target%]_longtermavg_[%unit%].warn_upper" ] },
+		[ { "type": "field", "params": [ "longtermavg-of-[%target%]-[%unit%].warn_upper" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "warn_upper" ] } ],
-		[ { "type": "field", "params": [ "[%target%]_longtermavg_[%unit%].warn_lower" ] },
+		[ { "type": "field", "params": [ "longtermavg-of-[%target%]-[%unit%].warn_lower" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "warn_lower" ] } ],
-		[ { "type": "field", "params": [ "[%target%]_longtermavg_[%unit%].crit_upper" ] },
+		[ { "type": "field", "params": [ "longtermavg-of-[%target%]-[%unit%].crit_upper" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "crit_upper" ] } ],
-		[ { "type": "field", "params": [ "[%target%]_longtermavg_[%unit%].crit_lower" ] },
+		[ { "type": "field", "params": [ "longtermavg-of-[%target%]-[%unit%].crit_lower" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "crit_lower" ] } ],
-		[ { "type": "field", "params": [ "[%target%]_longtermavg_[%unit%]" ] },
+		[ { "type": "field", "params": [ "longtermavg-of-[%target%]-[%unit%]" ] },
 		  { "type": "mean",  "params": [] },
 		  { "type": "alias", "params": [ "value" ] } ]
 	    ]

@@ -7,7 +7,7 @@ use URI::Query;
 use HTTP::Daemon;
 use HTTP::Status;
 use LWP::UserAgent;
-use JSON::XS;
+use JSON::PP;
 use Template;
 use strict;
 
@@ -222,7 +222,7 @@ sub search_urlmap ($$) {
 sub write_urlmap (\%) {
 	my ($map) = @_;
 	my $filename = "$CACHEDIR/naemon2influx-grafana-helper.urlmap";
-	my $enc = JSON->new->utf8->canonical;
+	my $enc = JSON::PP->new->utf8->canonical;
 	open my $h, '>', "$filename" or do {
 		die "cannot open $filename: $OS_ERROR, stopped";
 	};
@@ -239,7 +239,7 @@ sub write_urlmap (\%) {
 sub cmp_urlmap (\%\%) {
 	my ($left, $right) = @_;
 	my %c;
-	my $enc = JSON->new->utf8->canonical;
+	my $enc = JSON::PP->new->utf8->canonical;
 	while( my ($k, $v) = each %$left ) { my $json = $enc->encode($v); $c{"$k,$json"} |= 1; }
 	while( my ($k, $v) = each %$right ){ my $json = $enc->encode($v); $c{"$k,$json"} |= 2; }
 	my @r;
@@ -341,6 +341,44 @@ sub query_to_influxdb ($$) {
 	return $res;
 }
 
+sub query_dashboard_to_grafana ($$) {
+	my ($config, $uid) = @_;
+	my $ua = LWP::UserAgent->new;
+	my $url = $config->{GRAFANAURL} . "/api/dashboards/uid/$uid";
+	my $header = [
+        	'Authorization' => 'Bearer ' . $config->{GRAFANAAPIKEY},
+	];
+	my $req = HTTP::Request->new('GET', $url, $header);
+	debuglog "grafana-req %s", $url;
+	my $res = $ua->request($req);
+	debuglog "grafana-res code=%s", $res->code;
+	if( $res->code != 200 ){
+		debuglog "grafana-res: NG: res=%s", $res->content;
+		return undef;
+	}
+	my $r = decode_json $res->content;
+	my $type = $r->{meta}->{type};
+	my $rows = $r->{dashboard}->{rows};
+	unless( $type eq "db" and defined $rows ){
+		debuglog "grafana-res: NG: res=%s", $res->content;
+		return undef;
+	}
+
+	my @panelids;
+	foreach my $row ( @$rows ){
+		my $panels = $$row{panels};
+		next unless defined $panels;
+		foreach my $panel ( @$panels ){
+			my $panelid = $$panel{id};
+			push @panelids, $panelid;
+			print STDERR "DEBUG: panelid: $panelid\n";
+		}
+	}
+			
+	debuglog "grafana-res: OK: %s", join(" ", @panelids);
+	return @panelids;
+}
+
 sub register_dashboard_to_grafana ($$$;$) {
 	my ($config, $name, $json, $tags) = @_;
 	my @tags_text;
@@ -383,6 +421,7 @@ sub register_dashboard_to_grafana ($$$;$) {
 	my $res = $ua->request($req);
 	debuglog "grafana-res code=%s", $res->code;
 	if( $res->code != 200 ){
+		debuglog "grafana-res: res=%s", $res->content;
 		return undef;
 	}
 	my $r = decode_json $res->content;
@@ -421,14 +460,16 @@ sub read_all_measurements_from_influxdb ($) {
 
 sub read_fieldkeys_from_influxdb ($$) {
 	my ($config, $measurement ) = @_;
+	my $decoder = JSON::PP->new->utf8;
+	$decoder->relaxed( 1 );
 	my $q = "show field keys from \"$measurement\"";
 	my $res = query_to_influxdb $config, $q;
 	if ($res->is_success) {
-		my $json = decode_json $res->decoded_content;
-		my $series = $json->{'results'}->[0]->{'series'}->[0]->{'values'};
+		my $json = $decoder->decode( $res->decoded_content );
+		my $series = $json->{results}->[0]->{series}->[0]->{values};
 		my @fieldkeys;
 		foreach my $i ( @$series ){
-			next unless $i->[1] eq 'float';
+			#next unless $i->[1] eq 'float';
 			push @fieldkeys, $i->[0];
 		}
 		return @fieldkeys;
@@ -595,8 +636,11 @@ sub debuglog_panelsseed (%) {
 
 sub panelsseed2panelsobjlist (\%\%) {
 	my ($seeds, $additional_params) = @_;
+	my $decoder = JSON::PP->new->utf8;
+	$decoder->relaxed( 1 );
 	my @rows;
 	my %panelid2info;
+	my $serial = 10000;
 	foreach my $graph_id ( sort keys %$seeds ){
 		my $seed = $seeds->{$graph_id};
 		my $templatename = $seed->{template};
@@ -610,7 +654,7 @@ sub panelsseed2panelsobjlist (\%\%) {
 		my $json = expand_params $template_json, \%params;
 
 		my $obj;
-		eval { $obj = decode_json "[ $json ]"; };
+		eval { $obj = $decoder->decode("[ $json ]"); };
 		if( $@ ){
 			debuglog "$@";
 			debuglog "decoding json: $json";
@@ -624,13 +668,15 @@ sub panelsseed2panelsobjlist (\%\%) {
 				die "json has no panel, stopped";
 			}
 			foreach my $panel ( @$panels ){
-				my $panel_id = $panel->{id};
-				next unless $panel_id;
 				my $title = $panel->{title};
 				next unless $title;
-				$panelid2info{$panel_id} = {
+
+				$serial++;
+				$panel->{id}     = $serial;
+				$panel->{n2i_id} = $serial;
+				$panelid2info{$serial} = {
+					'id'    => $serial,
 					'title' => $title,
-					'id' => $panel_id,
 					'performancenames' => $fieldkeys,
 				};
 			}
@@ -679,6 +725,8 @@ sub cmd_cron ($$$) {
 			my $json = encode_json $objlist;
 			my @tags = ($host, $service);
 			my $r = register_dashboard_to_grafana $conf, "$host, $service", $json, \@tags;
+			my $uid = $$r{uid};
+			#my $s = query_dashboard_to_grafana $conf, $uid;
 			$curr_map{"$host,$service"} = {
 				'host_service' => "$host,$service",
 				'host'    => $host,
@@ -793,7 +841,7 @@ sub action_dashboard_info ($$$$$) {
 		"dashboard_id"  => $dashboard_info->{dashboard_id},
 		"panels" => [ values %$panels_info ],
 	};
-	my $enc = JSON->new->pretty;
+	my $enc = JSON::PP->new->pretty;
 	my $json = $enc->encode($obj);
 
 	my $res = HTTP::Response->new;
