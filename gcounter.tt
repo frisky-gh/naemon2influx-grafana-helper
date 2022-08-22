@@ -29,7 +29,7 @@
 	    "dsType": "influxdb",
 	    "resultFormat": "time_series",
 	    "alias": "$col",
-	    "query": "SELECT difference(last(\"[%fieldkey%]\")) AS \"differencial\" FROM \"[%measurement%]\" WHERE [%tags_where%] GROUP BY time(30m) fill(null)",
+	    "query": "SELECT last(\"[%fieldkey%]\")-first(\"[%fieldkey%]\") AS \"differencial\" FROM \"[%measurement%]\" GROUP BY time(60m) fill(0)",
 	    "rawQuery": true
 	} ],
 	"nullPointMode": "connected"

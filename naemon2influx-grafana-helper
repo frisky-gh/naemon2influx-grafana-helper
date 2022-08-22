@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+use Encode;
 use English;
 use IO::Handle;
 use URI::Escape;
@@ -30,7 +31,8 @@ sub debuglog ($;@) {
 	my ($format, @args) = @_;
 	my ($sec,$min,$hour,$day,$mon,$year) = localtime time;
 	my $t = sprintf '%04d-%02d-%02d_%02d:%02d:%02d', $year+1900, $mon+1, $day, $hour, $min, $sec;
-	printf $LOGFH "$t $format\n", @args;
+	my $s = sprintf "$t $format\n", @args;
+	print $LOGFH encode_utf8($s);
 }
 
 sub accesslog ($;@) {
@@ -654,7 +656,7 @@ sub panelsseed2panelsobjlist (\%\%) {
 		my $json = expand_params $template_json, \%params;
 
 		my $obj;
-		eval { $obj = $decoder->decode("[ $json ]"); };
+		eval { $obj = $decoder->decode( encode_utf8("[ $json ]") ); };
 		if( $@ ){
 			debuglog "$@";
 			debuglog "decoding json: $json";
